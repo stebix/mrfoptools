@@ -1,3 +1,4 @@
+from enum import Enum
 
 import jax
 import jax.numpy as jnp
@@ -213,10 +214,10 @@ def grad_shift(omega: Array, dk: int) -> Array:
     else:
         if n > 1:
             # build one large state vector ranging from largest +Fz to smalles -Fz
-            f = jnp.hstack((jnp.fliplr(omega[0, :]), omega[1, 1:], jnp.zeros((1, dk))))
-            z = jnp.hstack((omega[2, :], jnp.zeros((1, dk))))
-            fp = jnp.array([jnp.conjugate(f[n+dk-1]), f[0, 0:n+dk-1][::-1]])
-            fm = jnp.hstack((f[0, n+dk-1:], jnp.zeros((1, dk))))
+            f = jnp.hstack((jnp.fliplr(omega[0, :][jnp.newaxis, :]), omega[1, 1:][jnp.newaxis, :], jnp.zeros((1, dk))))
+            z = jnp.hstack((omega[2, :][jnp.newaxis, :], jnp.zeros((1, dk))))            
+            fp = jnp.array([jnp.conjugate(f[0, n+dk-1]), *f[0, 0:n+dk-1][::-1]])
+            fm = jnp.hstack((f[0, n+dk-1:][jnp.newaxis, :], jnp.zeros((1, dk))))
         else:
             # n = 1:  This happens if pulse sequence starts with nonzero transverse components
             #         and no RF pulse at t = 0 -- that is, the gradient happens first
@@ -308,7 +309,6 @@ def dT2_preparation_dT2(T2: float, T2_preptime: float) -> Array:
     )
 
 
-from enum import Enum
 
 class PreparationType(Enum):
     NONE = 0
