@@ -1,0 +1,51 @@
+# build and installation instructions for woodnet
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mrfoptools"
+version = "0.0.1"
+authors = [
+  { name="Jannik Stebani", email="jannik.stebani@uni-wuerzburg.de" },
+]
+description = "Programmatic optimization of flip angle trains for MRF FISP-like sequences."
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta"
+]
+license = {file = "LICENSE.txt"}
+keywords = [
+    "magnetic resonance imaging", "machine learning", "automatic differentiation",
+    "image processing", "machine learning", "signal processing"]
+
+dependencies = [
+  "jax",
+  "numpy",
+  "torch",
+  "torchvision",
+  "torchaudio",
+  "matplotlib",
+  "tqdm",
+  "tensorboard",
+  "rich",
+  "scikit-learn",
+  "scikit-image",
+  "pytest",
+  "ruamel.yaml",
+]
+
+[project.urls]
+Homepage = "https://github.com/stebix/mrf_optools"
+Issues = "https://github.com/stebix/mrf_optools/issues"
+
+[tool.ruff]
+exclude = ["legacy"]
+line-length = 99
+indent-width = 4
