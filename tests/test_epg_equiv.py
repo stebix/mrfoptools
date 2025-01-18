@@ -7,6 +7,7 @@ import mrfoptools.epg.epg as epg
 import mrfoptools.contrib.signalmodel_epg as contrib
 
 
+@pytest.mark.equivalencetest
 def test_q_excitation_equivalence():
     alpha = np.deg2rad(45)
     phi = np.deg2rad(20)
@@ -19,6 +20,7 @@ def test_q_excitation_equivalence():
     assert np.allclose(jaximp_result, torchimp_result, rtol=1e-5, atol=1e-5)
 
 
+@pytest.mark.equivalencetest
 @pytest.mark.parametrize("T1", [1.0, 2.0, 3.0])
 @pytest.mark.parametrize("T2", [0.1, 0.2, 0.3])
 @pytest.mark.parametrize("dt", [0.01, 0.02, 0.03])
@@ -31,6 +33,7 @@ def test_r_relaxation_equivalence(T1, T2, dt):
     assert np.allclose(jaximp_result, torchimp_result, rtol=1e-5, atol=1e-5)
 
 
+@pytest.mark.equivalencetest
 @pytest.mark.parametrize("T1", [1.0, 2.0, 3.0])
 @pytest.mark.parametrize("dt", [0.01, 0.02, 0.03])
 def test_dr_dT1_equivalence(T1, dt):
@@ -42,6 +45,7 @@ def test_dr_dT1_equivalence(T1, dt):
     assert np.allclose(jaximp_result, torchimp_result, rtol=1e-5, atol=1e-5)
 
 
+@pytest.mark.equivalencetest
 def test_apply_gradient():
     mx, my, mz = 0.5, 0.3, 0.2
     omega = jnp.array(
@@ -62,7 +66,8 @@ def test_apply_gradient():
 
 class Test_grad_shift:
 
-    def test_smoke_basestate(self):    
+    def test_smoke_basestate(self):
+        """Test that grad shift applications modifies state matrix shape."""
         mx, my, mz = 0.5, 0.3, 0.2
         omega = jnp.array(
             [
@@ -76,7 +81,9 @@ class Test_grad_shift:
         assert result.shape == (3, 2)
 
 
-    def test_smoke_iterative_application(self):
+    @pytest.mark.parametrize('n_grad_applications', [2, 3, 7])
+    def test_smoke_iterative_application(self, n_grad_applications):
+        """Test that mutiple grad shift applications modifies state matrix shape."""
         mx, my, mz = 0.5, 0.3, 0.2
         omega = jnp.array(
             [
@@ -85,7 +92,7 @@ class Test_grad_shift:
                 [mz],
             ]
         )
-        for _ in range(3):
+        for _ in range(n_grad_applications):
             omega = epg.grad_shift(omega, dk=1)
 
-        assert omega.shape == (3, 5)
+        assert omega.shape == (3, n_grad_applications + 1)
