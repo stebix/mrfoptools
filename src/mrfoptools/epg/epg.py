@@ -228,6 +228,16 @@ def grad_shift(omega: Array, dk: int) -> Array:
     return omega_new
 
 
+def unit_grad_shift(omega: Array) -> Array:
+    """Apply an unit gradient shift to the EPG state."""
+    omega = jnp.hstack([omega, jnp.zeros((3, 1))])
+    omega = omega.at[0, 1:].set(omega[0, :-1])
+    omega = omega.at[1, :-1].set(omega[1, 1:])
+    omega = omega.at[1, -1].set(0)
+    omega = omega.at[0, 0].set(jnp.conjugate(omega[1, 0]))
+    return omega
+
+
 def inversion(inversion_efficiency: float) -> Array:
     """
     Compute the inversion operator.
@@ -375,7 +385,7 @@ def compute_signal(
             omega = omega.at[2, 0].set(omega[2, 0] + M0 * b_TE)
 
             # Compute and store MR signal
-            signal = signal.at[glob_idx].set(omega[0, 0]) * jnp.exp(1j * phases[glob_idx])
+            signal = signal.at[glob_idx].set(omega[0, 0] * jnp.exp(1j * phases[glob_idx]))
 
             # Update state matrix (relaxation during TR - TE, gradient dephasing)
             omega = grad_shift(r_epg(T1, T2, TR[glob_idx] - TE) @ omega, dk=1)
