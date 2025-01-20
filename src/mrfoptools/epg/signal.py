@@ -79,6 +79,98 @@ else:
     unit_grad_shift_static = epg.unit_grad_shift_static
 
 
+def prepare_equilibrium_omega(M0: float, max_states: int) -> Array:
+    """
+    Create large static EPG state matrix for equilibrium state.
+    """
+    dtype = jnp.complex64
+    omega = jnp.hstack(
+        (jnp.array([[0.0], [0.0], [M0]], dtype=dtype),
+         jnp.zeros((3, max_states-1), dtype=dtype))
+    )
+    return omega
+
+
+def prepare_inversion_omega(T1: float,
+                            T2: float,
+                            M0: float,
+                            max_states: int,
+                            inversion_operator: Array,
+                            TI: float,
+                            b_TE: float
+    ) -> Array:
+    """
+    Generate large static initial EPG magnetization state matrix for inversion preparation.
+    """
+    omega = epg.r_epg(T1, T2, TI) @ inversion_operator @ prepare_equilibrium_omega(M0, max_states)
+    omega = omega.at[2, 0].set(omega[2, 0] + M0 * b_TE)
+    return omega
+
+
+def prepare_T2_omega(T2: float,
+                     T2_prep_time: float,
+                     M0: float,
+                     max_states: int
+    ) -> Array:
+    """
+    Generate large static initial EPG magnetization state matrix for T2 preparation.
+    """
+    omega = epg.preparation_T2_op(T2, T2_prep_time) @ prepare_equilibrium_omega(M0, max_states)
+    return omega
+
+
+def prepare_omega(preparation: PreparationType,
+                  max_states: int,
+                  T1: float,
+                  T2: float,
+                  M0: float,
+                  r_TE: Array,
+                  b_TE: float,
+                  TI: float,
+                  T2_prep_time: float
+    ) -> Array:
+    """
+    Generate large static initial EPG magnetization state matrix.
+
+    Parameters
+    ----------
+
+    preparation : PreparationType
+        Preparation type.
+
+    T1 : float
+        Longitudinal relaxation time in seconds.
+
+    T2 : float
+        Transverse relaxation time in seconds.
+
+    M0 : float
+        Equilibrium magnetization.
+
+    max_states : int
+        Maximum number of states to preallocate.
+        Resulting static state matrix has shape (3, max_states)
+
+    Returns
+    -------
+
+    omega : Array
+        Initial EPG state matrix.
+    """
+    if preparation is PreparationType.NONE:
+        return prepare_equilibrium_omega(M0, max_states)
+
+    elif preparation is PreparationType.INVERSION:
+        return prepare_inversion_omega(T1, T2, M0, r_TE, TI, b_TE, max_states)
+    
+    elif preparation is PreparationType.T2_PREPARATION:
+        return prepare_T2_omega(T2, T2_prep_time, M0, max_states)
+    
+    else:
+        msg = f'Invalid preparation type: {preparation}'
+        raise ValueError(msg)
+
+
 @jax.jit
 def advance_state(
         omega: Array,
