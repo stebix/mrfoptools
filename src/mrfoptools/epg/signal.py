@@ -418,7 +418,6 @@ def propagate_state_helper(
         Tuple containing the current state matrix `omega` (shape (3, N))
         and the MR signal array (shape (len(fa))).
 
-        
     Subsequent arguments are keyword-only and should be bound
     semi-statically using `functools.partial` to ensure the correct
     function signature for `jax.lax.fori_loop`.
