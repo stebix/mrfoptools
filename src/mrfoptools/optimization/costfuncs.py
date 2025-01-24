@@ -14,8 +14,30 @@ from jax.typing import ArrayLike
 import mrfoptools.epg.epg as epg
 import mrfoptools.epg.signal as epgsig
 
+
+def orthogonality_criterion(signals: Array) -> Array:
+    """
+    Cost function for the total pairwise orthogonality of the signals.
+    Note: Signals are assumed to be normalized.
+
+    Parameters
+    ----------
+
+    signals : Array
+        Signals array of the shape (n_species, n_shots).
+
+    Returns
+    -------
+
+    cost : Array
+        Orthogonality criterion.
+    """
+    n_species, _ = signals.shape
+    return jnp.linalg.norm(jnp.eye(n_species) - signals @ jnp.conjugate(signals.T))
+
+
 # @jax.jit(static_argnames=('preparation', 'inversion_efficiency', 'delta_B1'))
-def orthogonality_criterion(
+def legacy_orthogonality_criterion(
         T1: Array,
         T2: Array,
         M0: float,
@@ -119,7 +141,6 @@ def orthogonality_criterion(
         omega = epgsig.prepare_inversion_omega(T1=T1[idx], T2=T2[idx],
                                                M0=M0,
                                                TI=TI,
-                                               b_TE=b_TE,
                                                inversion_operator=inv_op,
                                                max_states=MAX_STATES)
         
@@ -142,4 +163,6 @@ def orthogonality_criterion(
 
     cost = jnp.linalg.norm(jnp.eye(n_species) - signals @ jnp.conjugate(signals.T))
 
-    return cost
+    cost2 = jnp.linalg.norm(fa[:-1] - fa[1:], ord=2) / fa.size
+
+    return cost #+ cost2
