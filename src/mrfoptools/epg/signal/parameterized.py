@@ -9,7 +9,7 @@ from collections.abc import Callable
 import jax
 import jax.numpy as jnp
 
-from mrfoptools.epg.signal import compute_signal_optimized
+from mrfoptools.epg.signal.signal import compute_signal_optimized
 
 
 def house_of_nicolouse(values: jax.Array,
@@ -53,7 +53,8 @@ def compute_signal(
     TR: jax.Array,
     TE: float,
     b_TE: float,
-    r_TE: jax.Array) -> jax.Array:
+    r_TE: jax.Array
+) -> jax.Array:
     """
     Compute MR signal.
     Uses alternative code path by generating/expanding actual flip angle vector
