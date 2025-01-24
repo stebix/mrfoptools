@@ -8,9 +8,8 @@ import functools
 import jax
 
 from jax import Array
-from jax.typing import ArrayLike
 
-import mrfoptools.epg.epg as epg
+import mrfoptools.epg.core as epg
 import mrfoptools.epg.signal as epgsig
 
 
