@@ -96,14 +96,13 @@ def prepare_inversion_omega(T1: float,
                             M0: float,
                             max_states: int,
                             inversion_operator: Array,
-                            TI: float,
-                            b_TE: float
+                            TI: float
     ) -> Array:
     """
     Generate large static initial EPG magnetization state matrix for inversion preparation.
     """
     omega = epg.r_epg(T1, T2, TI) @ inversion_operator @ prepare_equilibrium_omega(M0, max_states)
-    omega = omega.at[2, 0].set(omega[2, 0] + M0 * b_TE)
+    omega = omega.at[2, 0].set(omega[2, 0] + M0 * epg.b_epg(T1, TI))
     return omega
 
 
@@ -124,8 +123,7 @@ def prepare_omega(preparation: PreparationType,
                   T1: float,
                   T2: float,
                   M0: float,
-                  r_TE: Array,
-                  b_TE: float,
+                  inversion_operator: Array,
                   TI: float,
                   T2_prep_time: float
     ) -> Array:
@@ -161,7 +159,7 @@ def prepare_omega(preparation: PreparationType,
         return prepare_equilibrium_omega(M0, max_states)
 
     elif preparation is PreparationType.INVERSION:
-        return prepare_inversion_omega(T1, T2, M0, r_TE, TI, b_TE, max_states)
+        return  prepare_inversion_omega(T1, T2, M0, max_states, inversion_operator, TI)
     
     elif preparation is PreparationType.T2_PREPARATION:
         return prepare_T2_omega(T2, T2_prep_time, M0, max_states)
