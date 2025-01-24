@@ -51,9 +51,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from jax.typing import ArrayLike
-
-import mrfoptools.epg.epg as epg
+import mrfoptools.epg.core as epg
 
 
 Array = jax.Array | np.ndarray
