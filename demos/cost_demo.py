@@ -14,6 +14,8 @@ import mrfoptools.optimization.costfuncs as costfuncs
 
 import mrfoptools.optimization.optimization as optim
 
+import mrfoptools.simulation.simulation as sim
+
 
 def main():
     T1 = jnp.array([500.0, 1000.0, 3000.0])
@@ -71,6 +73,16 @@ def main():
     print(gval.shape)
 
     print(gval)
+
+    simres = sim.simulate_fisp(
+        T1=T1, T2=T2, M0=M0, fa=fa_cao_jax, TR=tr_cao_jax, phases=phases_jax,
+        TI=ti[0], TE=TE, max_states=1000
+    )
+
+    print(simres.shape)
+    print(simres.dtype)
+
+    raise Exception("Stop here")
 
 
     optres = optim.optimize(
