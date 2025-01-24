@@ -1,5 +1,10 @@
-from enum import Enum
+"""
+Implements core EPG simulation tooling and functions.
 
+Partial jax port of Tom Grieslers pytorch EPG code.
+
+@Author: Jannik Stebani 2025
+"""
 import jax
 import jax.numpy as jnp
 

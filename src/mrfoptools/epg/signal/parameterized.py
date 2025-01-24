@@ -11,12 +11,35 @@ import jax.numpy as jnp
 
 from mrfoptools.epg.signal import compute_signal_optimized
 
+
 def house_of_nicolouse(values: jax.Array,
                        segment_size: int = 100) -> jax.Array:
+    """
+    Generate a flip angle train using the House of Nicolouse method.
+    Simply connected line segments between the support points given in `values`.
+
+    Parameters
+    ----------
+
+    values : jax.Array
+        Support points for the flip angle train.
+
+    segment_size : int, optional
+        Number of points per segment. Default is 100.
+        Total size of the flip angle train is `len(values) * segment_size`.
+        Default is 100.
+
+    Returns
+    -------
+
+    fa : jax.Array
+        Flip angle train.
+    """
     result = []
     for v_start, v_stop in zip(values[:-1], values[1:]):
         result.append(jnp.linspace(v_start, v_stop, num=segment_size))
     return jnp.concatenate(result)
+
 
 
 def compute_signal(
