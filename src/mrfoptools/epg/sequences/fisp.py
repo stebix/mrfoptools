@@ -10,7 +10,7 @@ import jax
 from jax import Array
 
 import mrfoptools.epg.core as epg
-import mrfoptools.epg.signal as epgsig
+import mrfoptools.epg.signal.signal as epgsig
 
 
 def _simulate_fisp(
