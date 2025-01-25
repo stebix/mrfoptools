@@ -4,15 +4,12 @@ optimization of the MR Fingerprinting sequence.
 
 @author: Jannik Stebani 2025
 """
-import functools
-
-import jax
 import jax.numpy as jnp
 from jax import Array
-from jax.typing import ArrayLike
 
-import mrfoptools.epg.epg as epg
-import mrfoptools.epg.signal as epgsig
+import mrfoptools.epg.core as epg
+import mrfoptools.epg.signal.signal as epgsig
+
 
 
 def orthogonality_criterion(signals: Array) -> Array:
