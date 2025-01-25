@@ -9,7 +9,7 @@ version = "0.0.1"
 authors = [
   { name="Jannik Stebani", email="jannik.stebani@uni-wuerzburg.de" },
 ]
-description = "Programmatic optimization of flip angle trains for MRF FISP-like sequences."
+description = "Programmatic optimization of flip angle trains for MRF-like sequences."
 readme = "README.md"
 requires-python = ">=3.11"
 classifiers = [
@@ -38,12 +38,12 @@ dependencies = [
   "scikit-learn",
   "scikit-image",
   "pytest",
-  "ruamel.yaml",
+  "optax"
 ]
 
 [project.urls]
-Homepage = "https://github.com/stebix/mrf_optools"
-Issues = "https://github.com/stebix/mrf_optools/issues"
+Homepage = "https://github.com/stebix/mrfoptools"
+Issues = "https://github.com/stebix/mrfoptools/issues"
 
 [tool.ruff]
 exclude = ["legacy"]
