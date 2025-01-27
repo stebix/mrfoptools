@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 import pytest
 
-import mrfoptools.epg.epg as epg
+import mrfoptools.epg.core as epg
 
 
 
