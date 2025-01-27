@@ -104,7 +104,7 @@ def b_operator(T1: float, dt: float) -> jax.Array:
     b : jax.Array
         The longitudinal relaxation operator.
     """
-    return 1 - jnp.exp(-dt / T1) * jnp.array([[0.0], [0.0], [1.0]])
+    return (1 - jnp.exp(-dt / T1)) * jnp.array([[0.0], [0.0], [1.0]])
 
 
 def g_operator(beta: float) -> jax.Array:
