@@ -10,7 +10,7 @@ import jax.numpy as jnp
 
 import pytest
 
-import mrfoptools.epg.epg as epg
+import mrfoptools.epg.core as epg
 import mrfoptools.contrib.signalmodel_epg as contrib
 
 # Design a payload class that encapsulates three function objects
