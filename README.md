@@ -11,5 +11,5 @@ Jannik Stebani 2024
 
 ### Acknowledgements
 
-Tom Griesler (PyTorch implementation @ Master Thesis)
-Max Gram     (Matalb EPG implementation)
+- Tom Griesler (PyTorch implementation @ Master Thesis)
+- Max Gram     (Matalb EPG implementation)
