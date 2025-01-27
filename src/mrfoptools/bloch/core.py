@@ -7,7 +7,6 @@ Based on PyTorch implementation by Tom Griesler.
 """
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 
 def q_operator(alpha: float, phi: float) -> jax.Array:
@@ -106,3 +105,57 @@ def b_operator(T1: float, dt: float) -> jax.Array:
         The longitudinal relaxation operator.
     """
     return 1 - jnp.exp(-dt / T1) * jnp.array([[0.0], [0.0], [1.0]])
+
+
+def g_operator(beta: float) -> jax.Array:
+    """
+    Compute the rotation matrix around the z axis with angle `beta`.
+    Intended use for spin dephasing simulation.
+
+    Parameters
+    ----------
+
+    beta : float
+        The rotation angle in radians.
+
+    Returns
+    -------
+
+    g : jax.Array
+        The rotation matrix.
+    """
+    sinbeta = jnp.sin(beta)
+    cosbeta = jnp.cos(beta)
+    return jnp.array(
+        [[cosbeta, sinbeta, 0.0],
+         [-sinbeta, cosbeta, 0.0],
+         [0.0, 0.0, 1.0]]
+    )
+
+
+def inversion_operator(inversion_efficiency: float) -> jax.Array:
+    """
+    Compute the inversion operator for the given inversion efficiency.
+
+    Parameters
+    ----------
+
+    inversion_efficiency : float
+        The inversion efficiency.
+
+    Returns
+    -------
+
+    jax.Array
+        The inversion operator.
+    """
+    return jnp.array(
+        [[0.0, 0.0, 0.0],
+         [0.0, 0.0, 0.0],
+         [0.0, 0.0, -inversion_efficiency]]
+    )
+
+
+projection_operator = jnp.array([[1.0, 0.0, 0.0],
+                                 [0.0, 1.0, 0.0]])
+
