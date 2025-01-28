@@ -38,7 +38,8 @@ dependencies = [
   "scikit-learn",
   "scikit-image",
   "pytest",
-  "optax"
+  "optax",
+  "zarr"
 ]
 
 [project.urls]
