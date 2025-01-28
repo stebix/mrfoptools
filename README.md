@@ -1,5 +1,7 @@
 # mrfoptools
 
+![example workflow](https://github.com/stebix/mrfoptools/workflows/ci.yml/badge.svg)
+
 Tooling for programmatic optimization of MRF-specific flip angle and repetition time patterns
 with gradient descent based algorithms.
 
