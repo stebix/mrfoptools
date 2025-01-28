@@ -1,6 +1,7 @@
 # mrfoptools
 
 ![example workflow](https://github.com/stebix/mrfoptools/actions/workflows/ci.yml/badge.svg)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 Tooling for programmatic optimization of MRF-specific flip angle and repetition time patterns
 with gradient descent based algorithms.
