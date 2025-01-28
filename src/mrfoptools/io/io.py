@@ -40,3 +40,16 @@ def store_optimization_bag(
         histories_group.create_dataset(name=k, data=v)
 
     return path
+
+
+def load_optimization_bag(
+        path: str | pathlib.Path
+) -> OptimizationBag:
+    """
+    Load stored optimization settings and results from a zarr file.
+    """
+    zarr_file = zarr.convenience.open(path, mode='r')
+    settings = {k : v for k, v in zarr_file.attrs.items()}
+    results = {k : v[:] for k, v in zarr_file['results'].items()}
+    histories = {k : v[:] for k, v in zarr_file['histories'].items()}
+    return OptimizationBag(settings=settings, results=results, histories=histories)
