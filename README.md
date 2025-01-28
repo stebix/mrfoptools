@@ -9,6 +9,10 @@ We select `jax` as the numerical and automatic differentiation framework.
 
 Concrete research purpose is the improvement of FISP-based MRF for inner ear (IE) imaging purposes.
 
+Aims:
+
+- [ ] Analytically optimal combination of gradients for sub-cost-functions (results from Multi-Task-Learning)
+
 Jannik Stebani 2024
 
 ### Acknowledgements
