@@ -2,6 +2,10 @@
 Tooling to covneniently create initializations for the 
 flip angle and repetition time optimization problem.
 
+Patterns directly sourced or inspired by:
+Cao Pattern:     Xaiozhi Cao et al. https://doi.org/10.1002/mrm.29194
+Yun Pattern:     Yun Jiang et al.   https://doi.org/10.1002/mrm.25559
+
 @author: Jannik Stebani 2025
 """
 from collections.abc import Sequence
@@ -53,6 +57,14 @@ def create_sinusoidal_pattern(
             amplitude * np.sin(np.linspace(0, np.pi, segment_size))
         )
     return np.concatenate(segments, axis=-1)
+
+
+def create_constant_pattern(amplitude: Number, length: int) -> np.ndarray:
+    """
+    Create a constant flip angle pattern.
+    """
+    dtype: type = np.float32
+    return np.full(shape=length, fill_value=amplitude, dtype=dtype)
 
 
 def load_cao_pattern(type_: Literal['fa', 'tr', 'both'] = 'fa') -> np.ndarray | Pattern:
