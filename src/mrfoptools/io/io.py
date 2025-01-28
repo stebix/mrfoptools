@@ -50,6 +50,6 @@ def load_optimization_bag(
     """
     zarr_file = zarr.convenience.open(path, mode='r')
     settings = {k : v for k, v in zarr_file.attrs.items()}
-    results = {k : v[:] for k, v in zarr_file['results'].items()}
-    histories = {k : v[:] for k, v in zarr_file['histories'].items()}
+    results = {k : v[...] for k, v in zarr_file['results'].items()}
+    histories = {k : v[...] for k, v in zarr_file['histories'].items()}
     return OptimizationBag(settings=settings, results=results, histories=histories)
