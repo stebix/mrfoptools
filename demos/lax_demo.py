@@ -4,10 +4,8 @@ from pathlib import Path
 import numpy as np
 import jax
 import jax.numpy as jnp
-import torch
-import rich
 
-import mrfoptools.epg.epg as epg
+import mrfoptools.epg.core as epg
 import mrfoptools.epg.signal as epgsig
 import mrfoptools.contrib.signalmodel_epg as contrib
 
@@ -23,7 +21,7 @@ def main():
 
     n_blocks = 1
     n_shots = len(fa_cao)
-    preparations = [epgsig.PreparationType.INVERSION]
+    preparations = [epgsig.PreparationType.INVERSION] # noqa: F841
     ti = [20]
     t2preptime = [0]
 

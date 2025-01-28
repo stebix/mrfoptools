@@ -1,6 +1,8 @@
 """
 Initial demonstration of cost functions.
 """
+# ruff: noqa: F401
+# ruff: noqa: F841
 import time
 from pathlib import Path
 
@@ -8,13 +10,10 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-import mrfoptools.epg.epg as epg
 import mrfoptools.epg.signal as epgsig
 import mrfoptools.optimization.costfuncs as costfuncs
-
 import mrfoptools.optimization.optimization as optim
-
-import mrfoptools.simulation.simulation as sim
+import mrfoptools.epg.sequences as seq
 
 
 def main():
@@ -74,7 +73,7 @@ def main():
 
     print(gval)
 
-    simres = sim.simulate_fisp(
+    simres = seq.simulate_fisp(
         T1=T1, T2=T2, M0=M0, fa=fa_cao_jax, TR=tr_cao_jax, phases=phases_jax,
         TI=ti[0], TE=TE, max_states=1000
     )
