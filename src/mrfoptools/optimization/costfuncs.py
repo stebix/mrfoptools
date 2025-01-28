@@ -4,6 +4,8 @@ optimization of the MR Fingerprinting sequence.
 
 @author: Jannik Stebani 2025
 """
+from collections.abc import Sequence
+
 import jax.numpy as jnp
 from jax import Array
 
@@ -32,6 +34,44 @@ def orthogonality_criterion(signals: Array) -> Array:
     n_species, _ = signals.shape
     return jnp.linalg.norm(jnp.eye(n_species) - signals @ jnp.conjugate(signals.T))
 
+
+def mean_signal_criterion(signals: Array) -> Array:
+    """
+    Cost function evaluating the mean absolute value of the signals.
+    Negative sign to make it a cost function, since we
+    want to maximize the signals.
+
+    Signals should be a 2D array of shape (n_species, n_shots).
+    """
+    return -jnp.mean(jnp.abs(signals))
+
+
+def fa_total_variation_criterion(fa: Array) -> Array:
+    """
+    Cost function evaluating the total variation of the flip angles.
+    Smooth flip angle sequences should have a lower cost.
+
+    Flip angles should be a 1D array of length `n_shots`.
+    """
+    return jnp.linalg.norm(fa[:-1] - fa[1:], ord=2)
+
+
+
+
+def create(spec: Sequence[dict[str, float | str]]) -> Array:
+    """
+    Programmatically create a sequence of cost functions from a sequence
+    of specification dictionaries that contain the function name and
+    a weighting factor.
+    """
+    raise NotImplementedError('not yet')
+
+
+
+
+
+
+# TODO: Delete old legacy stuff.
 
 # @jax.jit(static_argnames=('preparation', 'inversion_efficiency', 'delta_B1'))
 def legacy_orthogonality_criterion(
