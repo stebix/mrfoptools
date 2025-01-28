@@ -6,19 +6,15 @@ Optimize the MRF sequence.
 import functools
 import jax
 import jax.numpy as jnp
-import numpy as np
 import tqdm
 import optax
 
-
 from jax import Array
-from jax.typing import ArrayLike
-
-from mrfoptools.epg.signal.signal import PreparationType, prepare_inversion_omega
 
 import mrfoptools.epg.core as epg
-
 import mrfoptools.optimization.costfuncs as costfuncs
+from mrfoptools.epg.signal.signal import PreparationType, prepare_inversion_omega
+from mrfoptools.epg.signal.signal import compute_signal_optimized
 
 def optimize(
         T1: Array,
@@ -45,7 +41,7 @@ def optimize(
                        static_argnames=('preparation', 'inversion_efficiency', 'delta_B1'))
     
     # Initialize the gradient
-    grad = jax.grad(function, argnums=3)
+    # grad = jax.grad(function, argnums=3)
     grad_and_loss = jax.value_and_grad(function, argnums=3)
 
     fa_history = []
@@ -64,9 +60,6 @@ def optimize(
         loss_history.append(value)
 
     return (fa_history, loss_history)
-
-
-from mrfoptools.epg.signal.signal import compute_signal_optimized
 
 
 def optimize2(
@@ -115,9 +108,9 @@ def optimize2(
 
     def step(T1, T2, fa):
         signals = forward(T1, T2, fa)
-        ortho_cost = costfuncs.orthogonality_criterion(signals)
-
-        signal_cost = - jnp.sum(jnp.linalg.norm(signals, ord=2, axis=1))
+        
+        #ortho_cost = costfuncs.orthogonality_criterion(signals)
+        #signal_cost = - jnp.sum(jnp.linalg.norm(signals, ord=2, axis=1))
 
         mabs_cost = - jnp.mean(jnp.abs(signals))
 

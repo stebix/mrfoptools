@@ -4,7 +4,6 @@ Test equivalence of Jax implementation and the contributed implementation of the
 @Author: Jannik Stebani 2025
 """
 import torch
-import jax
 import jax.numpy as jnp
 
 import pytest
