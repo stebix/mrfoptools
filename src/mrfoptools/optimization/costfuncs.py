@@ -160,6 +160,6 @@ def legacy_orthogonality_criterion(
 
     cost = jnp.linalg.norm(jnp.eye(n_species) - signals @ jnp.conjugate(signals.T))
 
-    cost2 = jnp.linalg.norm(fa[:-1] - fa[1:], ord=2) / fa.size
+    # cost2 = jnp.linalg.norm(fa[:-1] - fa[1:], ord=2) / fa.size
 
     return cost #+ cost2
