@@ -30,7 +30,7 @@ def create_sinusoidal_pattern(
         segment_size: int,
 ) -> np.ndarray:
     """
-    Create a Yun-like sinusoidal flip angle pattern.
+    Create a Yun-like sinusoidal pattern.
     Pattern consists of multiple sinus segments with specified amplitudes.
     Total length is `len(amplitudes) * segment_size`.
 
@@ -39,8 +39,8 @@ def create_sinusoidal_pattern(
 
     amplitudes: Sequence[Number]
         Amplitudes of the sinusoidal segments.
-        Unit (e.g. radians or degrees) of amplitudes determines
-        the unit of the output pattern.
+        Unit (e.g. radians or degrees for flip angles or milliseconds for repetition times)
+        of amplitudes determines the unit of the output pattern.
 
     segment_size: int
         Number of samples per segment.
@@ -49,7 +49,7 @@ def create_sinusoidal_pattern(
     -------
 
     np.ndarray
-        Sinusoidal flip angle pattern.
+        Resulting sinusoidal-shaped pattern.
     """
     segments = []
     for amplitude in amplitudes:
@@ -61,7 +61,8 @@ def create_sinusoidal_pattern(
 
 def create_constant_pattern(amplitude: Number, length: int) -> np.ndarray:
     """
-    Create a constant flip angle pattern.
+    Create a constant pattern.
+    Input unit of the amplitude determines the unit of the output pattern.
     """
     dtype: type = np.float32
     return np.full(shape=length, fill_value=amplitude, dtype=dtype)
