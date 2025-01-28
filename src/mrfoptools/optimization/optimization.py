@@ -108,7 +108,7 @@ def optimize2(
 
     def step(T1, T2, fa):
         signals = forward(T1, T2, fa)
-        
+
         #ortho_cost = costfuncs.orthogonality_criterion(signals)
         #signal_cost = - jnp.sum(jnp.linalg.norm(signals, ord=2, axis=1))
 
@@ -141,3 +141,24 @@ def optimize2(
         loss_history.append(value)
 
     return (fa_history, loss_history)
+
+
+def optimize3(
+        T1: Array,
+        T2: Array,
+        M0: float,
+        step_size: float,
+        max_iterations: float,
+        intial_fa: Array,
+        TR: Array,
+        phases: Array,
+        TI: float,
+        TE: float,
+        inversion_efficiency: float,
+        min_fa: float,
+        max_fa: float
+) -> dict[str, Array]:
+    """
+    Optimize with simple gradient descent.
+    """
+    pass
