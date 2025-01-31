@@ -62,6 +62,15 @@ def make_mock_optimization_bag(**kwargs) -> OptimizationBag:
     return bag
 
 
+def test_optimization_bag_string_repr():
+    bag = make_mock_optimization_bag()
+    expected_repr = ('OptimizationBag(settings={\'alpha\': 1, \'beta\': [1, 2, 3], '
+                     '\'name\': \'picard-jean-luc\'}, results={\'r-ones\'->Array(3), '
+                     '\'r-tens\'->Array(3)}, histories={\'h-fives\'->Array(3), \'h-sevens\'->Array(3)})')
+    assert repr(bag) == expected_repr
+
+
+
 @pytest.fixture
 def stored_optimization_bag_path(tmp_path):
     """
