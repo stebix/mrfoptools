@@ -8,13 +8,39 @@ from typing import Any
 import zarr
 
 
+def expand_to_repr(m: Mapping[str, Sequence]) -> str:
+    """
+    Expand a mapping from strings to sequences (expected to be
+    large lists or arrays) to a usable string representation
+    that displays shapes instead of full contents.
+    """
+    key_to_shape_or_length: dict[str, int | tuple[int, ...]] = {}
+    for k, v in m.items():
+        try:
+            shape_or_length = v.shape if len(v.shape) > 1 else v.shape[0]
+            type_ = 'Array'
+        except AttributeError:
+            shape_or_length = len(v)
+            type_ = 'List'
+
+        key_to_shape_or_length[k] = f'{type_}({shape_or_length})'
+
+    return ', '.join((f'\'{k}\'->{v}'
+                      for k, v in key_to_shape_or_length.items()))
+
 
 @dataclasses.dataclass
 class OptimizationBag:
     settings: Mapping[str, Any]
-    results: Mapping[str, np.ndarray]
-    histories: Mapping[str, np.ndarray] 
+    results: Mapping[str, np.ndarray] = dataclasses.field(repr=False)
+    histories: Mapping[str, np.ndarray] = dataclasses.field(repr=False)
 
+    def __repr__(self):
+        s = self.__class__.__name__ + '('
+        s = ''.join((s, f'settings={self.settings}'))
+        s = ', '.join((s, f'results={{{expand_to_repr(self.results)}}}'))
+        s = ', '.join((s, f'histories={{{expand_to_repr(self.histories)}}})'))
+        return s
 
 def _store_bag_to_group(
         group: zarr.hierarchy.Group,
