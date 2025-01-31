@@ -4,7 +4,6 @@ Tooling for interactive visualization of the optimization variables.
 @Author: Jannik Stebani 2025
 """
 import matplotlib
-import matplotlib.pyplot as plt
 import ipywidgets as wgt
 import jax
 import jax.numpy as jnp
