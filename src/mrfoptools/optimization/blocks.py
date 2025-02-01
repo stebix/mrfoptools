@@ -41,7 +41,7 @@ def forward(
     )
 
 
-def create_specialized_forward(
+def build_specialized_forward(
         TR: jax.Array,
         M0: float,
         phases: jax.Array,
@@ -55,6 +55,8 @@ def create_specialized_forward(
     Convenience function to specialize the forwards model function
     for a given set of parameters that are usually constant for a given
     optimization problem.
+    Specialization entails fixing all quasi-constant parameters and
+    vectorizing the function over the relaxometric parameters.
 
     Dynamic are:
      - relaxometric parameters T1 and T2 : these are vmapped over
@@ -68,3 +70,4 @@ def create_specialized_forward(
     # Vectorize over T1 and T2 such that we can pass them as arrays
     forward = jax.vmap(forward, in_axes=(0, 0, None))
     return forward
+
