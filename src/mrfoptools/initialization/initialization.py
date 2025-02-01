@@ -19,6 +19,9 @@ import numpy as np
 CAO_FA_PATTERN_PATH: Path = Path(__file__).parent / 'assets/fa_cao.npy'
 CAO_TR_PATTERN_PATH: Path = Path(__file__).parent / 'assets/tr_cao.npy'
 
+YUN_FA_PATTERN_PATH: Path = Path(__file__).parent / 'assets/fa_yun.npy'
+YUN_TR_PATTERN_PATH: Path = Path(__file__).parent / 'assets/tr_yun.npy'
+
 
 class Pattern(NamedTuple):
     flip_angles: np.ndarray
@@ -66,6 +69,24 @@ def create_constant_pattern(amplitude: Number, length: int) -> np.ndarray:
     """
     dtype: type = np.float32
     return np.full(shape=length, fill_value=amplitude, dtype=dtype)
+
+
+
+def load_yun_pattern(type_: Literal['fa', 'tr', 'both'] = 'fa') -> np.ndarray | Pattern:
+    """
+    Load the predefined Yun pattern.
+    Flip angle and repetition time patterns are available.
+    """
+    if type_ == 'fa':
+        return np.load(YUN_FA_PATTERN_PATH)
+    elif type_ == 'tr':
+        return np.load(YUN_TR_PATTERN_PATH)
+
+    return Pattern(
+        flip_angles=np.load(YUN_FA_PATTERN_PATH),
+        repetition_times=np.load(YUN_TR_PATTERN_PATH)
+    )
+
 
 
 def load_cao_pattern(type_: Literal['fa', 'tr', 'both'] = 'fa') -> np.ndarray | Pattern:
