@@ -14,12 +14,12 @@ import mrfoptools.epg.signal.signal as epgsig
 
 
 def _simulate_fisp(
+        fa: Array,
+        TR: Array,
         T1: float,
         T2: float,
         M0: float,
-        fa: Array,
         phases: Array,
-        TR: Array,
         TE: float,
         TI: float,
         inversion_efficiency: float,
@@ -56,11 +56,11 @@ def _simulate_fisp(
 
 
 def simulate_fisp(
+        fa: Array,
+        TR: Array,
         T1: Array,
         T2: Array,
         M0: float,
-        fa: Array,
-        TR: Array,
         phases: Array,
         TI: float,
         TE: float,
