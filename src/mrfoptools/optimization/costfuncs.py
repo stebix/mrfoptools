@@ -57,6 +57,25 @@ def fa_total_variation_criterion(fa: Array) -> Array:
 
 
 
+def minimum_average_criterion(signals: Array) -> Array:
+    """
+    Compute inverse if minimum average signal of the
+    tissue species wise signals.
+
+    Parameters
+    ----------
+    signals : Array
+        Signals with shape: ``(n_species, n_tr)``.
+
+    Notes
+    -----
+    Quite similar to the mean signal criterion, but emphasizes
+    that even the smallest signal should be large. In principle,
+    mean_signal_criterion could promote solutions where one species
+    is fully suppressed while others are maximized.
+    """
+    return 1 / jnp.min(jnp.linalg.norm(signals, ord=2, axis=1))
+
 
 def create(spec: Sequence[dict[str, float | str]]) -> Array:
     """
