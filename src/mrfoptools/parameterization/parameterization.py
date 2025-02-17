@@ -52,9 +52,9 @@ class ControlPoints(NamedTuple):
 
 def initialize_parameterization(
     n_controlpoints: int,
-    amplitude_scale: float,
-    amplitude_offset: float,
-    points_scale: float,
+    x_scale: float,
+    y_scale: float,
+    y_offset: float,
     n_tr: float,
     key: jax.Array,
     edge_mode: str | EdgeMode = EdgeMode.FREE
@@ -63,11 +63,11 @@ def initialize_parameterization(
     Initialize a parameterized representation.
     """
     edge_mode = EdgeMode(edge_mode) if isinstance(edge_mode, str) else edge_mode
-    subkey_amp, subkey_pts = jax.random.split(key, num=2)
-    amplitudes = (  jax.random.normal(subkey_amp, shape=n_controlpoints) * amplitude_scale
-                  + amplitude_offset)
-    points = (  jnp.linspace(0, n_tr, num=n_controlpoints)
-              + jax.random.normal(subkey_pts, shape=n_controlpoints) * points_scale)
-    return ControlPoints(amplitudes, points, edge_mode)
+    subkey_y, subkey_x = jax.random.split(key, num=2)
+    y = (  jax.random.normal(subkey_y, shape=n_controlpoints) * y_scale
+         + y_offset)
+    x = (  jnp.linspace(0, n_tr, num=n_controlpoints)
+         + jax.random.normal(subkey_x, shape=n_controlpoints) * x_scale)
+    return ControlPoints(x, y, edge_mode)
 
 
