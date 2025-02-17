@@ -4,6 +4,7 @@ High level interface to generate signal tensors for simulation of sequences.
 @author: Jannik Stebani 2025
 """
 import functools
+from collections.abc import Callable
 
 import jax
 
@@ -95,3 +96,43 @@ def simulate_fisp(
 
     return simulate_fisp_vmap(T1, T2)
 
+
+def specialize_simulate_fisp(
+    T1: jax.Array,
+    T2: jax.Array,
+    M0: float,
+    phases: jax.Array,
+    TI: float,
+    TE: float,
+    max_states: int,
+    inversion_efficiency: float = 1.0,
+    delta_B1: float = 1.0
+) -> Callable[[jax.Array, jax.Array], jax.Array]:
+    """
+    Specialize ``simulate_fisp`` into a two-parameter function
+    of the canonical optimization variables ``fa`` and ``TR``.
+    """
+    kwargs = {'T1' : T1, 'T2' : T2, 'M0' : M0, 'phases': phases,
+              'TI' : TI, 'TE' : TE, 'max_states' : max_states,
+              'inversion_efficiency' : inversion_efficiency,
+              'delta_B1' : delta_B1
+             }
+    func = functools.partial(simulate_fisp, **kwargs)
+    func.__doc__ = """
+    Simulate FISP sequence with presets.
+    
+    Parameters
+    ----------
+    fa : jax.Array
+        Flip angle train in radians.
+        
+    TR : jax.Array
+        Repetition times.
+    
+    Returns
+    -------
+    
+    signals : jax.Array
+        Signals with shape ``(n_species, n_tr)``
+    """
+    return func
