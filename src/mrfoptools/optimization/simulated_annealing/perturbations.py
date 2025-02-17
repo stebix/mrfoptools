@@ -22,6 +22,7 @@ Naming rationale:
 
 @Author: Jannik Stebani 2025
 """
+from typing import NamedTuple
 import jax
 import jax.numpy as jnp
 
@@ -262,3 +263,12 @@ def generate_indexed_varedge_perturbation(
     parameters_perturbed = parameters.at[rowcoord, colcoord].set(update, mode='clip')
     parameters_perturbed = jnp.clip(parameters_perturbed, min=bounds[0], max=bounds[1])
     return parameters_perturbed
+
+
+class PerturbedControlPoints(NamedTuple):
+    """
+    Pair of unperturbed and subsequent
+    perturbed control points or parameterizations.
+    """
+    initial: jax.Array
+    perturbed: jax.Array
