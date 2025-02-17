@@ -202,3 +202,56 @@ def generate_indexed_varedge_perturbation(
     )
     parameters_perturbed = parameters.at[index].set(update, mode='clip')
     return parameters_perturbed
+
+
+
+
+
+def generate_indexed_varedge_perturbation_v2(
+    index: int,
+    parameters: jax.Array,
+    bounds: tuple[jax.Array, jax.Array],
+    scales: jax.Array,
+    key: jax.Array
+) -> jax.Array:
+    """
+    Generate an indexed (i.e. only a single point is perturbed)
+    perturbation for parameter array with *variable* edge values.
+
+
+    Notes
+    -----
+    The index is assumend to be a flat integer index into the
+    2D parameter array with shape ``(2, n_controlpoints)``.
+    Thus, ``index`` determines whether the x or y coordinate of the
+    control point is perturbed.
+
+    The parameter array defines the control
+    points parameterization of the optimization variable.
+    
+    If the index is out of bounds, it is clipped to the
+    valid range.
+
+    Note that although the control point coordinates are
+    clipped such that ``bounds[0]`` for the x-coordinate 
+    and ``bounds[1]`` for the y-coordinate are respected,
+    the subsequent expansion process via spline
+    interpolation may still yield values outside of these
+    bounds.
+    """
+    # parameters array shape visualization:
+    # [  x_0  ,  x_1  ,  x_2  ,  x_3  ]
+    # [  y_0  ,  y_1  ,  y_2  ,  y_3  ]
+
+    rowcoord, colcoord = jnp.unravel_index(index, parameters.shape)
+    # TODO: Test this
+    scale = jax.lax.cond(
+        pred=rowcoord==0,
+        true_fun=lambda arr: arr[0],
+        false_fun=lambda arr: arr[1],
+        operand=scales
+    )
+    update = parameters[rowcoord, colcoord] + jax.random.normal(key) * scale
+    parameters_perturbed = parameters.at[rowcoord, colcoord].set(update, mode='clip')
+    parameters_perturbed = jnp.clip(parameters_perturbed, min=bounds[0], max=bounds[1])
+    return parameters_perturbed
