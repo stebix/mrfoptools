@@ -81,10 +81,10 @@ def simulate_fisp(
     # to allow correct vmapping
     simulate_fisp_vmap = functools.partial(
         _simulate_fisp,
+        fa,
+        TR,
         M0=M0,
-        fa=fa,
         phases=phases,
-        TR=TR,
         TE=TE,
         TI=TI,
         inversion_efficiency=inversion_efficiency,
