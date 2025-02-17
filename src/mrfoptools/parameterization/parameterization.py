@@ -71,3 +71,22 @@ def initialize_parameterization(
     return ControlPoints(x, y, edge_mode)
 
 
+def initialize_parameterization_v2(
+    n_controlpoints: int,
+    x_scale: float,
+    y_scale: float,
+    y_offset: float,
+    n_tr: float,
+    key: jax.Array
+) -> jax.Array:
+    """
+    Initialize a parameterized representation.
+    """
+    subkey_y, subkey_x = jax.random.split(key, num=2)
+    y = (  jax.random.normal(subkey_y, shape=n_controlpoints) * y_scale
+         + y_offset)
+    x = (  jnp.linspace(0, n_tr, num=n_controlpoints)
+         + jax.random.normal(subkey_x, shape=n_controlpoints) * x_scale)
+    return jnp.stack((x, y), axis=0)
+
+
