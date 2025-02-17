@@ -117,3 +117,41 @@ def initialize_parameterization(
     return jnp.stack((x, y), axis=0)
 
 
+def initialize_bounds(
+    n_controlpoints: int,
+    x_bounds: tuple[float, float],
+    y_bounds: tuple[float, float]
+) -> tuple[jax.Array, jax.Array]:
+    """
+    Initialize bounds for a parameterized representation.
+
+    Parameters
+    ----------
+    n_controlpoints : int
+        Number of control points.
+    x_bounds : tuple[float, float]
+        Lower and upper bounds for the x-coordinates.
+    y_bounds : tuple[float, float]
+        Lower and upper bounds for the y-coordinates.
+    
+    Returns
+    -------
+    bounds : tuple[jax.Array, jax.Array]
+        Tuple of lower and upper bounds arrays of shape
+        ``(2, n_controlpoints)``.
+    """
+    xlower, xupper = x_bounds
+    ylower, yupper = y_bounds
+    dtype = jnp.float32
+    lower = jnp.stack(
+        (jnp.full(n_controlpoints, fill_value=xlower, dtype=dtype),
+         jnp.full(n_controlpoints, fill_value=ylower, dtype=dtype)),
+        axis=0
+    )
+    upper = jnp.stack(
+        (jnp.full(n_controlpoints, fill_value=xupper, dtype=dtype),
+         jnp.full(n_controlpoints, fill_value=yupper, dtype=dtype)),
+        axis=0
+    )
+    return (lower, upper)
+
