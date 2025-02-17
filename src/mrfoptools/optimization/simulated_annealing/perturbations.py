@@ -98,7 +98,7 @@ def generate_global_varedge_perturbation(
     return parameters_perturbed
 
 
-def generate_indexed_fixededge_perturbation(
+def generate_indexed_fixededge_perturbation_nonjittable(
     index: int,
     parameters: jax.Array,
     bounds: tuple[float, float],
@@ -111,6 +111,10 @@ def generate_indexed_fixededge_perturbation(
 
     If the index is out of bounds, it is clipped to the
     mutation-enabled inner region.
+
+    NOTE: Non-jittable (due to python control flow) legacy impl.
+          New version with `lax.cond` control flow below. 
+
 
     Parameters
     ----------
@@ -154,7 +158,7 @@ def generate_indexed_fixededge_perturbation(
     return parameters_perturbed
 
 
-def generate_indexed_varedge_perturbation(
+def generate_indexed_varedge_perturbation_nonjittable(
     index: int,
     parameters: jax.Array,
     bounds: tuple[float, float],
@@ -167,6 +171,9 @@ def generate_indexed_varedge_perturbation(
 
     If the index is out of bounds, it is clipped to the
     mutation-enabled inner region.
+
+    NOTE: Non-jittable (due to python control flow) legacy impl.
+          New version with `lax.cond` control flow below. 
 
     Parameters
     ----------
@@ -207,7 +214,7 @@ def generate_indexed_varedge_perturbation(
 
 
 
-def generate_indexed_varedge_perturbation_v2(
+def generate_indexed_varedge_perturbation(
     index: int,
     parameters: jax.Array,
     bounds: tuple[jax.Array, jax.Array],
