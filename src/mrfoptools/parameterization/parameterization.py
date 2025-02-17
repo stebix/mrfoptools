@@ -50,7 +50,7 @@ class ControlPoints(NamedTuple):
     edge_mode: EdgeMode
 
 
-def initialize_parameterization(
+def initialize_parameterization_legacy(
     n_controlpoints: int,
     x_scale: float,
     y_scale: float,
@@ -61,6 +61,8 @@ def initialize_parameterization(
 ) -> ControlPoints:
     """
     Initialize a parameterized representation.
+
+    NOTE: Legacy version with separate x and y arrays.
     """
     edge_mode = EdgeMode(edge_mode) if isinstance(edge_mode, str) else edge_mode
     subkey_y, subkey_x = jax.random.split(key, num=2)
@@ -71,7 +73,7 @@ def initialize_parameterization(
     return ControlPoints(x, y, edge_mode)
 
 
-def initialize_parameterization_v2(
+def initialize_parameterization(
     n_controlpoints: int,
     x_scale: float,
     y_scale: float,
@@ -81,6 +83,31 @@ def initialize_parameterization_v2(
 ) -> jax.Array:
     """
     Initialize a parameterized representation.
+
+    Parameterization via control points array:
+    [  xc_0  ,  xc_1  ,  ...  ,  xc_n_controlpoints  ] -> x_scale
+    [  yc_0  ,  yc_1  ,  ...  ,  yc_n_controlpoints  ] -> y_scale, y_offset
+
+    Parameters
+    ----------
+    n_controlpoints : int
+        Number of control points.
+    x_scale : float
+        Scaling factor for the x-coordinates.
+    y_scale : float
+        Scaling factor for the y-coordinates.
+    y_offset : float
+        Offset for the y-coordinates.
+    n_tr : float
+        Number of TR points, i.e. extent of the
+        x-coordinates.
+    key : jax.Array
+        Random key for reproducible randomness.
+
+    Returns
+    -------
+    control_points : jax.Array
+        Control points array of shape ``(2, n_controlpoints)``.
     """
     subkey_y, subkey_x = jax.random.split(key, num=2)
     y = (  jax.random.normal(subkey_y, shape=n_controlpoints) * y_scale
