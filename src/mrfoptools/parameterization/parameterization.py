@@ -10,7 +10,6 @@ and control points
 
 @Author: Jannik Stebani 2025
 """
-
 from typing import NamedTuple
 from enum import Enum
 
