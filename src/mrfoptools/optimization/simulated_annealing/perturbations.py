@@ -26,241 +26,72 @@ from typing import NamedTuple
 import jax
 import jax.numpy as jnp
 
-def generate_global_fixededge_perturbation(
-    parameters: jax.Array,
-    bounds: tuple[float, float],
-    scale: float,
-    key: jax.Array
-) -> jax.Array:
-    """
-    Generate global (i.e. all points are perturbed jointly)
-    perturbation for parameter array with *fixed* edge values,
+from mrfoptools.parameterization.parameterization import ControlPoints, EdgeMode
 
-    Parameters
-    ----------
-    parameters : jax.Array
-        Parameterization value array to be perturbed.
-        First and last entry remain fixed.
-    bounds : tuple[float, float]
-        Lower and upper bounds for the parameter values.
-        Excursion beyond these bounds is clipped.
-    scale : float
-        Scaling factor for the perturbation.
-    key : jax.Array
-        Random key for reproducible randomness.
 
-    Returns
-    -------
-    perturbed_parameters : jax.Array
-        Perturbed parameter array.
-    """
-    shape = parameters.shape[0] - 2
-    delta = jax.random.normal(key, shape=shape) * scale
-    inner = parameters[1:-1] + delta
-    parameters_perturbed = jnp.clip(
-        parameters.at[1:-1].set(inner), *bounds
+def min_clamp_index(i: int, min: int) -> int:
+    return jax.lax.cond(
+        pred=i < min,
+        true_fun=lambda i: min,
+        false_fun=lambda i: i,
+        operand=i
     )
-    return parameters_perturbed
+
+def max_clamp_index(i: int, max: int) -> int:
+    return jax.lax.cond(
+        pred=i > max,
+        true_fun=lambda i: max,
+        false_fun=lambda i: i,
+        operand=i
+    )
+
+def clamp_index(i: int, min: int, max: int) -> int:
+    return max_clamp_index(min_clamp_index(i, min), max)
 
 
-def generate_global_varedge_perturbation(
+def perturb(
+    index: int,
     parameters: jax.Array,
     bounds: tuple[float, float],
-    scale: float,
+    relscale: float,
     key: jax.Array,
+    *,
+    edgemode: EdgeMode = EdgeMode.FLOATING
 ) -> jax.Array:
     """
-    Generate global (i.e. all points are perturbed jointly)
-    perturbation for parameter array with *variable* edge values,
-
-    Parameters
-    ----------
-    parameters : jax.Array
-        Parameterization value array to be perturbed.
-        All elements can be modified.
-    bounds : tuple[float, float]
-        Lower and upper bounds for the parameter values.
-        Excursion beyond these bounds is clipped.
-    scale : float
-        Scaling factor for the perturbation.
-    key : jax.Array
-        Random key for reproducible randomness.
-
-    Returns
-    -------
-    perturbed_parameters : jax.Array
-        Perturbed parameter array.
-    """
-    shape = parameters.shape[0]
-    delta = jax.random.normal(key, shape=shape) * scale
-    parameters_perturbed = jnp.clip(
-        parameters + delta, *bounds
-    )
-    return parameters_perturbed
-
-
-def generate_indexed_fixededge_perturbation_nonjittable(
-    index: int,
-    parameters: jax.Array,
-    bounds: tuple[float, float],
-    scale: float,
-    key: jax.Array
-) -> jax.Array:
-    """
-    Generate a indexed (i.e. only a single point is perturbed)
-    perturbation for parameter array with *fixed* edge values.
-
-    If the index is out of bounds, it is clipped to the
-    mutation-enabled inner region.
-
-    NOTE: Non-jittable (due to python control flow) legacy impl.
-          New version with `lax.cond` control flow below. 
-
+    Perturb the coordinate at the given index of the parameter array.
 
     Parameters
     ----------
     index : int
         Index of the parameter to be perturbed.
-        Must be in the range [1, len(parameters) - 1],
-        otherwise it is clipped to the inner region.
     parameters : jax.Array
         Parameterization value array to be perturbed.
-        First and last entry remain fixed.
+        Expected to be of shape ``n_controlpoints``.
     bounds : tuple[float, float]
         Lower and upper bounds for the parameter values.
         Excursion beyond these bounds is clipped.
-    scale : float
+    relscale : float
         Scaling factor for the perturbation.
     key : jax.Array
         Random key for reproducible randomness.
-
-    Returns
-    -------
-    perturbed_parameters : jax.Array
-        Perturbed parameter array.
-    """
-
-    # TODO: Possible microoptimization to pre-check
-    #       the correct index range.
-    # Otherwise clip to inner region: i.e. perturbation preserves
-    # the edge values
-    # [  a  ,  b  ,  c  ,  d  ]
-    #    ^                 ^
-    #   fix               fix
-    # indices outside get clipped to inner region
-    if index not in range(1, parameters.shape[0] - 1):
-        index = 1 if index < 1 else parameters.shape[0] - 2
-        
-    update = jnp.clip(
-        parameters[index] + jax.random.normal(key) * scale,
-        *bounds
-    )
-    parameters_perturbed = parameters.at[index].set(update, mode='clip')
-    return parameters_perturbed
-
-
-def generate_indexed_varedge_perturbation_nonjittable(
-    index: int,
-    parameters: jax.Array,
-    bounds: tuple[float, float],
-    scale: float,
-    key: jax.Array
-) -> jax.Array:
-    """
-    Generate a indexed (i.e. only a single point is perturbed)
-    perturbation for parameter array with *variable* edge values.
-
-    If the index is out of bounds, it is clipped to the
-    mutation-enabled inner region.
-
-    NOTE: Non-jittable (due to python control flow) legacy impl.
-          New version with `lax.cond` control flow below. 
-
-    Parameters
-    ----------
-    index : int
-        Index of the parameter to be perturbed.
-        Must be in the range [1, len(parameters) - 1],
-        otherwise it is clipped to the inner region.
-    parameters : jax.Array
-        Parameterization value array to be perturbed.
-    bounds : tuple[float, float]
-        Lower and upper bounds for the parameter values.
-        Excursion beyond these bounds is clipped.
-    scale : float
-        Scaling factor for the perturbation.
-    key : jax.Array
-        Random key for reproducible randomness.
-
-    Returns
-    -------
-    perturbed_parameters : jax.Array
-        Perturbed parameter array.
-    """
-    # TODO: Possible microoptimization to pre-check
-    #       the correct index range.
-    # Otherwise clip to inner region: i.e. perturbation gets
-    # clipped inside parameters values
-    # [  a  ,  b  ,  c  ,  d  ]
-    #    ^                 ^
-    #   var               var
-    update = jnp.clip(
-        parameters[index] + jax.random.normal(key) * scale,
-        *bounds
-    )
-    parameters_perturbed = parameters.at[index].set(update, mode='clip')
-    return parameters_perturbed
-
-
-
-
-
-def generate_indexed_varedge_perturbation(
-    index: int,
-    parameters: jax.Array,
-    bounds: tuple[jax.Array, jax.Array],
-    scales: jax.Array,
-    key: jax.Array
-) -> jax.Array:
-    """
-    Generate an indexed (i.e. only a single point is perturbed)
-    perturbation for parameter array with *variable* edge values.
-
-
-    Notes
-    -----
-    The index is assumend to be a flat integer index into the
-    2D parameter array with shape ``(2, n_controlpoints)``.
-    Thus, ``index`` determines whether the x or y coordinate of the
-    control point is perturbed.
-
-    The parameter array defines the control
-    points parameterization of the optimization variable.
+    edgemode : EdgeMode, optional
+        Mode for edge handling during perturbation.
+        Defaults to EdgeMode.FLOATING.
     
-    If the index is out of bounds, it is clipped to the
-    valid range.
-
-    Note that although the control point coordinates are
-    clipped such that ``bounds[0]`` for the x-coordinate 
-    and ``bounds[1]`` for the y-coordinate are respected,
-    the subsequent expansion process via spline
-    interpolation may still yield values outside of these
-    bounds.
-    """
-    # parameters array shape visualization:
-    # [  x_0  ,  x_1  ,  x_2  ,  x_3  ]
-    # [  y_0  ,  y_1  ,  y_2  ,  y_3  ]
-
-    rowcoord, colcoord = jnp.unravel_index(index, parameters.shape)
-    # TODO: Test this
-    scale = jax.lax.cond(
-        pred=rowcoord==0,
-        true_fun=lambda arr: arr[0],
-        false_fun=lambda arr: arr[1],
-        operand=scales
-    )
-    update = parameters[rowcoord, colcoord] + jax.random.normal(key) * scale
-    parameters_perturbed = parameters.at[rowcoord, colcoord].set(update, mode='clip')
+    Returns
+    -------
+    perturbed_parameters : jax.Array
+        Perturbed parameter array.
+    """    
+    if edgemode is EdgeMode.FIXED:
+        # sanitize index to inner region
+        index = clamp_index(index, min=1, max=len(parameters)-2)
+    
+    extent: float = bounds[1] - bounds[0]
+    update = (  parameters.at[index].get(mode='clip')
+              + jax.random.normal(key) * relscale * extent)
+    parameters_perturbed = parameters.at[index].set(update, mode='clip')
     parameters_perturbed = jnp.clip(parameters_perturbed, min=bounds[0], max=bounds[1])
     return parameters_perturbed
 
@@ -270,5 +101,5 @@ class PerturbedControlPoints(NamedTuple):
     Pair of unperturbed and subsequent
     perturbed control points or parameterizations.
     """
-    initial: jax.Array
-    perturbed: jax.Array
+    initial: ControlPoints
+    perturbed: ControlPoints
