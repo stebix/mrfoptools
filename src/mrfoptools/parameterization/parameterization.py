@@ -22,10 +22,8 @@ class EdgeMode(Enum):
     Enumeration of edge modes, i.e. modification
     possibilitites for the control points.
     """
-    FREE = 'free'
-    X_FIXED = 'x_fixed'
-    Y_FIXED = 'y_fixed'
     FIXED = 'fixed'
+    FLOATING = 'floating'
     
 
 
@@ -51,29 +49,6 @@ class ControlPoints(NamedTuple):
 
 
 def initialize_parameterization_legacy(
-    n_controlpoints: int,
-    x_scale: float,
-    y_scale: float,
-    y_offset: float,
-    n_tr: float,
-    key: jax.Array,
-    edge_mode: str | EdgeMode = EdgeMode.FREE
-) -> ControlPoints:
-    """
-    Initialize a parameterized representation.
-
-    NOTE: Legacy version with separate x and y arrays.
-    """
-    edge_mode = EdgeMode(edge_mode) if isinstance(edge_mode, str) else edge_mode
-    subkey_y, subkey_x = jax.random.split(key, num=2)
-    y = (  jax.random.normal(subkey_y, shape=n_controlpoints) * y_scale
-         + y_offset)
-    x = (  jnp.linspace(0, n_tr, num=n_controlpoints)
-         + jax.random.normal(subkey_x, shape=n_controlpoints) * x_scale)
-    return ControlPoints(x, y, edge_mode)
-
-
-def initialize_parameterization(
     n_controlpoints: int,
     x_scale: float,
     y_scale: float,
@@ -115,6 +90,28 @@ def initialize_parameterization(
     x = (  jnp.linspace(0, n_tr, num=n_controlpoints)
          + jax.random.normal(subkey_x, shape=n_controlpoints) * x_scale)
     return jnp.stack((x, y), axis=0)
+
+
+def initialize_parameterization(
+    n_controlpoints: int,
+    x_scale: float,
+    y_scale: float,
+    y_offset: float,
+    extent: float,
+    key: jax.Array,
+    *,
+    edge_mode: str | EdgeMode = EdgeMode.FLOATING
+) -> ControlPoints:
+    """
+    Initialize a parameterized representation.
+    """
+    edge_mode = EdgeMode(edge_mode) if isinstance(edge_mode, str) else edge_mode
+    subkey_y, subkey_x = jax.random.split(key)
+    y = (  jax.random.normal(subkey_y, shape=n_controlpoints) * y_scale
+         + y_offset)
+    x = (  jnp.linspace(0, extent, num=n_controlpoints)
+         + jax.random.normal(subkey_x, shape=n_controlpoints) * x_scale)
+    return ControlPoints(x, y, edge_mode)
 
 
 def initialize_bounds(
