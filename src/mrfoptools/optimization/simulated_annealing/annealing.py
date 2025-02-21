@@ -192,6 +192,9 @@ def adaptive_non_isotropic(
 
             for paxis, parameters in paxis_parameter_pairs:
                 
+                if paxis == ParameterAxis.X:
+                    continue
+
                 relscale = _scale_factors[(ptype, paxis)]
                 bounds = _absbounds[(ptype, paxis)]
 
