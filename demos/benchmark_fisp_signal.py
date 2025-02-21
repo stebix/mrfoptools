@@ -14,7 +14,6 @@ import rich.table
 import tqdm
 
 from rich.console import Console
-from jax.typing import ArrayLike
 
 from mrfoptools.epg.sequences.helpers import quickmake_simulate_fisp, get_basic_configuration
 
