@@ -12,6 +12,7 @@ import pytest
 
 import mrfoptools.epg.core as epg
 import mrfoptools.contrib.signalmodel_epg as contrib
+import mrfoptools.epg.core.core_numpy as epgnp
 
 # Design a payload class that encapsulates three function objects
 # - one object for the torch implementation
@@ -19,6 +20,124 @@ import mrfoptools.contrib.signalmodel_epg as contrib
 # - on object for the compiled jax implementation
 # The class should have a method that compares the outputs of the three implementations
 # and raises an error if the outputs are not equal.
+
+from mrfoptools.testtooling.testtooling import jaxwrapper, torchwrapper, numpywrapper, CompTest
+
+from mrfoptools.testtooling.testtooling import (JaxImplementation,
+                                                NumpyImplementation,
+                                                TorchImplementation,
+                                                benchmark,
+                                                autocompile)
+
+
+from mrfoptools.testtooling.reporting import (aggregate, metrics,
+                                              generate_rows, display_report)
+
+
+def test_autobench():
+
+    dtype = np.complex64
+    alpha = np.deg2rad(45).astype(dtype)
+    phi = np.deg2rad(20).astype(dtype)
+
+    numpyfunc = epgnp.q_epg
+
+    numpyfunc_alt = epgnp.q_alt
+
+    jaxfunc = epg.q_epg
+    torchfunc = contrib.q_epg
+
+    numpyimpl = NumpyImplementation(numpyfunc, ID='numpy')
+    numpyimpl_alt = NumpyImplementation(numpyfunc_alt, ID='numpy_alt')
+
+    jaximpl = JaxImplementation(jaxfunc, ID='jax')
+    torchimpl = TorchImplementation(torchfunc, ID='torch')
+
+    implementations = autocompile([numpyimpl, numpyimpl_alt, jaximpl, torchimpl])
+
+    rt, rr = benchmark(implementations, args=(alpha, phi), repeats=50)
+
+    display_report(rt, header='q excitation benchmarking test')
+
+
+def test_numbaimpl_q_excitation():
+    import numba as nb
+    numpyimpl = epgnp.q_epg
+    numpyimpl_compiled = nb.njit(epgnp.q_epg, fastmath=True)
+    dtype = np.complex64
+    alpha = np.deg2rad(45).astype(dtype)
+    phi = np.deg2rad(20).astype(dtype)
+
+    result_baseimpl = numpyimpl(alpha, phi)
+    result_compiled = numpyimpl_compiled(alpha, phi)
+
+    assert np.allclose(result_baseimpl, result_compiled, rtol=1e-5, atol=1e-5)
+
+
+def test_complete_equivalence_q_excitation():
+    # input data
+    dtype = np.complex64
+    alpha = np.deg2rad(45).astype(dtype)
+    phi = np.deg2rad(20).astype(dtype)
+
+    jaximpl = epg.q_epg
+    torchimpl = contrib.q_epg
+    numpyimpl = epgnp.q_epg
+
+    import numba as nb
+
+    jaximpl_compiled = jax.jit(jaximpl)
+    torchimpl_compiled = torch.compile(torchimpl)
+    numpyimpl_compiled = nb.njit(epgnp.q_epg, fastmath=True)
+
+    jaximpl_wrapped, jaximpl_runtimes = jaxwrapper(jaximpl)
+    torchimpl_wrapped, torchimpl_runtimes = torchwrapper(torchimpl)
+    numpyimpl_wrapped, numpyimpl_runtimes = numpywrapper(numpyimpl)
+
+    jaximpl_result = jaximpl_wrapped(alpha, phi)
+    torchimpl_result = torchimpl_wrapped(alpha, phi)
+    numpyimpl_result = numpyimpl_wrapped(alpha, phi)
+
+    jaximpl_compiled_wrapped, jaximpl_compiled_runtimes = jaxwrapper(jaximpl_compiled)
+    torchimpl_compiled_wrapped, torchimpl_compiled_runtimes = torchwrapper(torchimpl_compiled)
+    numpyimpl_compiled_wrapped, numpyimpl_compiled_runtimes = numpywrapper(numpyimpl_compiled)
+    
+    jaximpl_compiled_result = jaximpl_compiled_wrapped(alpha, phi)
+    torchimpl_compiled_result = torchimpl_compiled_wrapped(alpha, phi)
+    numpyimpl_compiled_results = numpyimpl_compiled_wrapped(alpha, phi)
+
+
+    assert np.allclose(jaximpl_result, torchimpl_result, rtol=1e-5, atol=1e-5), 'jax - torch mismatch'
+    assert np.allclose(jaximpl_result, numpyimpl_result, rtol=1e-5, atol=1e-5), 'jax - numpy mismatch'
+
+    import rich.table
+    import rich.console
+
+    table = rich.table.Table(title='q excitation benchmarking test')
+    table.add_column('Implementation', justify='center', style='cyan')
+    table.add_column('Runtime (ms)', justify='center', style='magenta')
+
+    f = 1e3
+
+    def metrics(
+        timings: np.ndarray | list,
+        *,
+        scale: float = 1e3
+    ) -> list[str]:
+        timings = np.asarray(timings) * scale
+        return [f'{np.mean(timings):.5f}', f'{np.std(timings, ddof=1):.5f}']
+
+    table.add_row('jax', *metrics(jaximpl_runtimes))
+    table.add_row('torch', *metrics(torchimpl_runtimes))
+    table.add_row('numpy', *metrics(numpyimpl_runtimes))
+
+    # add rows for compiled runtimes
+    table.add_row('jax compiled', *metrics(jaximpl_compiled_runtimes))
+    table.add_row('torch compiled', *metrics(torchimpl_compiled_runtimes))
+    table.add_row('numpy compiled', *metrics(numpyimpl_compiled_runtimes))
+
+    console = rich.console.Console()
+    console.print(table)
 
 
 class Test_q_excitation:
