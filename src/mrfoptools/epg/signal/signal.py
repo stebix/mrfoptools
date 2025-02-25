@@ -44,7 +44,6 @@ Watch out for hints in the function names that indicate the compilation strategy
 @author: Jannik Stebani 2025
 """
 
-import enum
 import functools
 
 import jax
