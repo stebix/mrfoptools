@@ -6,13 +6,12 @@ High level interface to generate signal tensors for simulation of sequences.
 import functools
 from collections.abc import Callable
 
-import jax
+import numpy as np
 
-from jax import Array
+import mrfoptools.epg.core.numpy as epg
+import mrfoptools.epg.signal.numpy as epgsig
 
-import mrfoptools.epg.core as epg
-import mrfoptools.epg.signal.signal as epgsig
-
+Array = np.ndarray
 
 def _simulate_fisp(
         fa: Array,

@@ -3,9 +3,9 @@ import numpy as np
 import pytest
 
 
-import mrfoptools.epg.core as jaxcore
 import mrfoptools.contrib.signalmodel_epg as contrib
-import mrfoptools.epg.core.core_numpy as npycore
+import mrfoptools.epg.core.numpy as npycore
+import mrfoptools.epg.core.jax as jaxcore
 
 
 from mrfoptools.testtooling.testtooling import (JaxImplementation,

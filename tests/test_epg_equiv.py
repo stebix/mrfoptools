@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 import pytest
 
-import mrfoptools.epg.core as epg
+import mrfoptools.epg.core.jax as jaxcore
 
 
 
@@ -17,7 +17,7 @@ class Test_grad_shift:
                 [mz],
             ]
         )
-        result = epg.grad_shift(omega, dk=1)
+        result = jaxcore.grad_shift(omega, dk=1)
         assert isinstance(result, jnp.ndarray)
         assert result.shape == (3, 2)
 
@@ -34,6 +34,6 @@ class Test_grad_shift:
             ]
         )
         for _ in range(n_grad_applications):
-            omega = epg.grad_shift(omega, dk=1)
+            omega = jaxcore.grad_shift(omega, dk=1)
 
         assert omega.shape == (3, n_grad_applications + 1)

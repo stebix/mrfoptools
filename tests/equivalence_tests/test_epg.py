@@ -10,9 +10,10 @@ import jax.numpy as jnp
 
 import pytest
 
-import mrfoptools.epg.core as epg
 import mrfoptools.contrib.signalmodel_epg as contrib
-import mrfoptools.epg.core.core_numpy as epgnp
+
+import mrfoptools.epg.core.jax as epgjax
+import mrfoptools.epg.core.numpy as epgnp
 
 # Design a payload class that encapsulates three function objects
 # - one object for the torch implementation
@@ -41,7 +42,7 @@ def test_autobench():
 
     numpyfunc_alt = epgnp.q_alt
 
-    jaxfunc = epg.q_epg
+    jaxfunc = epgjax.q_epg
     torchfunc = contrib.q_epg
 
     numpyimpl = NumpyImplementation(numpyfunc, ID='numpy')
@@ -78,7 +79,7 @@ class Test_q_excitation:
         alpha = np.deg2rad(45)
         phi = np.deg2rad(20)
         # functions
-        jaximpl = epg.q_epg
+        jaximpl = epgjax.q_epg
         torchimpl = contrib.q_epg
         jaximpl_compiled = jax.jit(jaximpl)
 
@@ -96,7 +97,7 @@ def test_q_excitation_equivalence():
     alpha = np.deg2rad(45)
     phi = np.deg2rad(20)
 
-    jaximp_result = epg.q_epg(alpha, phi)
+    jaximp_result = epgjax.q_epg(alpha, phi)
     torchimp_result = contrib.q_epg(
         torch.as_tensor(alpha), torch.as_tensor(phi)
     ).detach().resolve_conj().numpy()
@@ -109,7 +110,7 @@ def test_q_excitation_equivalence():
 @pytest.mark.parametrize('dt', [0.01, 0.02, 0.03])
 def test_r_relaxation_equivalence(T1, T2, dt):
     # functions
-    jaximpl = epg.r_epg
+    jaximpl = epgjax.r_epg
     torchimpl = contrib.r_epg
     jaximpl_compiled = jax.jit(jaximpl)
     # results
@@ -126,7 +127,7 @@ def test_r_relaxation_equivalence(T1, T2, dt):
 @pytest.mark.parametrize('T1', [1.0, 2.0, 3.0])
 @pytest.mark.parametrize('dt', [0.01, 0.02, 0.03])
 def test_dr_dT1_equivalence(T1, dt):
-    jaximp_result = epg.dr_dT1_epg(T1, dt)
+    jaximp_result = epgjax.dr_dT1_epg(T1, dt)
     torchimp_result = contrib.dr_dt1_epg(
         torch.as_tensor(T1), torch.as_tensor(dt)
     ).detach().numpy()
@@ -144,7 +145,7 @@ def test_apply_gradient():
         ]
     )
     omega_torch = torch.tensor([[mx], [my], [mz]])
-    jaximp_result = epg.grad_shift(omega_jax, dk=1)
+    jaximp_result = epgjax.grad_shift(omega_jax, dk=1)
     torchimp_result = contrib.epg_grad(omega_torch).detach().numpy()
     assert np.allclose(jaximp_result, torchimp_result, rtol=1e-5, atol=1e-5)
 
@@ -164,7 +165,7 @@ def test_singular_apply_unit_gradient():
     )
     omega_torch = torch.tensor([[mx], [my], [mz]])
     # functions
-    jaximpl = epg.unit_grad_shift_allocating
+    jaximpl = epgjax.unit_grad_shift_allocating
     torchimpl = contrib.epg_grad
     jaximpl_compiled = jax.jit(jaximpl)
     # results
@@ -193,7 +194,7 @@ def test_multiple_apply_unit_gradient(n):
     omega_torch = torch.tensor([[mx], [my], [mz]])
     omega_jax_compiled = omega_jax.copy()
     # functions
-    jaximpl = epg.unit_grad_shift_allocating
+    jaximpl = epgjax.unit_grad_shift_allocating
     torchimpl = contrib.epg_grad
     jaximpl_compiled = jax.jit(jaximpl)
     # results
@@ -222,8 +223,8 @@ class Test_unit_gradient_shift_static:
         omega_dynamic = omega_init.copy()
 
         for _ in range(3):
-            omega_static = epg.unit_grad_shift_static(omega_static)
-            omega_dynamic = epg.unit_grad_shift_allocating(omega_dynamic)
+            omega_static = epgjax.unit_grad_shift_static(omega_static)
+            omega_dynamic = epgjax.unit_grad_shift_allocating(omega_dynamic)
 
         print(omega_static)
 

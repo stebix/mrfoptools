@@ -5,10 +5,13 @@ for signal calculations with EPG.
 import numpy as np
 import jax
 
-import mrfoptools.epg.signal.numpy as npysig
-import mrfoptools.epg.signal.signal as jaxsig
 
-import mrfoptools.epg.core.core_numpy as npycore
+import mrfoptools.epg.signal.numpy as npysig
+import mrfoptools.epg.signal.numpy.preparations as npysigprep
+
+import mrfoptools.epg.signal.jax as jaxsig
+
+import mrfoptools.epg.core.numpy as npycore
 
 from mrfoptools.testtooling.testtooling import (JaxImplementation,
                                                 NumpyImplementation,
@@ -35,7 +38,7 @@ def init_helper() -> dict:
     inversion_efficiency = 1.0
     max_states = 500
     inversion_operator = npycore.inversion(inversion_efficiency)
-    omega = npysig.prepare_inversion_omega(
+    omega = npysigprep.prepare_inversion_omega(
         T1, T2, M0, max_states=max_states,
         inversion_operator=inversion_operator, TI=TI
     )
