@@ -50,3 +50,9 @@ Issues = "https://github.com/stebix/mrfoptools/issues"
 exclude = ["legacy"]
 line-length = 99
 indent-width = 4
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: mark a test that takes a long time to run.",
+    "benchmark: mark test that are benchmarks with CLI output intended for human inspection"
+]
