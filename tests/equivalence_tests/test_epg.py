@@ -21,7 +21,7 @@ import mrfoptools.epg.core.core_numpy as epgnp
 # The class should have a method that compares the outputs of the three implementations
 # and raises an error if the outputs are not equal.
 
-from mrfoptools.testtooling.testtooling import jaxwrapper, torchwrapper, numpywrapper, CompTest
+from mrfoptools.testtooling.testtooling import jaxwrapper, torchwrapper, numpywrapper
 
 from mrfoptools.testtooling.testtooling import (JaxImplementation,
                                                 NumpyImplementation,
