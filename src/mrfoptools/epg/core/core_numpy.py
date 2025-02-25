@@ -71,21 +71,21 @@ def q_alt(alpha: float, phi: float = np.pi / 2) -> Array:
         EPG excitation matrix.
     """
     q = np.zeros(shape=(3, 3), dtype=np.complex64)
-    q[0, :] = ((
+    q[0, :] = np.array((
          np.cos(alpha / 2) ** 2,
          np.exp(2 * 1j * phi) * np.sin(alpha / 2) ** 2,
          -1j * np.exp(1j*phi) * np.sin(alpha)
-    ))
-    q[1, :] = ((
+    ), dtype=np.complex64)
+    q[1, :] = np.array((
          np.exp(-2 * 1j * phi) * np.sin(alpha / 2) ** 2, 
          np.cos(alpha / 2) ** 2, 
          1j * np.exp(-1j * phi) * np.sin(alpha)
-    ))
+    ), dtype=np.complex64)
     q[2, :] = np.array((
          -1j/2 * np.exp(-1j * phi) * np.sin(alpha), 
          1j/2 * np.exp(1j * phi) * np.sin(alpha), 
          np.cos(alpha)
-    ))
+    ), dtype=np.complex64)
     return np.conjugate(q)
 
 
@@ -113,12 +113,13 @@ def r_epg(T1: float, T2: float, dt: float) -> Array:
     r : array
         EPG relaxation matrix.
     """
+    dtype = np.complex64
     E1 = np.exp(-dt / T1)
     E2 = np.exp(-dt / T2)
     return np.array(
         ((E2, 0.0, 0.0),
          (0.0, E2, 0.0),
-         (0.0, 0.0, E1))
+         (0.0, 0.0, E1)), dtype=dtype
     )
 
 
@@ -197,83 +198,6 @@ def b_epg(T1: float, dt: float) -> Array:
     return 1 - np.exp(-dt / T1)
 
 
-def epg_unit_grad(omega: Array) -> Array:
-    """
-    Apply the unit gradient operator to the EPG state.
-
-    Parameters
-    ----------
-
-    omega : array
-        EPG state.
-
-    Returns
-    -------
-
-    omega_new : array
-        EPG state after applying the unit gradient operator.
-    """
-    # expand omega by one column
-    # first row: F+ perform right shift
-    # second row: F- perform left shift
-    # third row: Z0 perform no shift
-    omega = np.concatenate([omega, np.zeros(shape=(3, 1))], axis=-1)
-    omega_new = np.array(
-        [
-            [np.conjugate(omega[1, 0]), *omega[0, :-1]],
-            [*omega[1, 1:], 0.0],
-            [*omega[2, :]]
-        ]
-    )
-    return omega_new
-
-
-def grad_shift(omega: Array, dk: int) -> Array:
-    """
-    Apply gradient shift operator to the EPG state.
-
-    Parameters
-    ----------
-
-    omega : array
-        EPG state.
-
-    dk : int
-        Number of gradient twists.
-
-    Returns
-    -------
-
-    omega_new : array
-        EPG state after applying the gradient shift operator.
-
-
-    Notes
-    -----
-
-    Function implementation heavily inspired by:
-    https://github.com/imr-framework/epg
-    """
-    n = np.shape(omega)[1]
-    if dk == 0:
-        omega_new = omega
-    else:
-        if n > 1:
-            # build one large state vector ranging from largest +Fz to smalles -Fz
-            f = np.hstack((np.fliplr(omega[0, :][np.newaxis, :]), omega[1, 1:][np.newaxis, :], np.zeros((1, dk))))
-            z = np.hstack((omega[2, :][np.newaxis, :], np.zeros((1, dk))))            
-            fp = np.array([np.conjugate(f[0, n+dk-1]), *f[0, 0:n+dk-1][::-1]])
-            fm = np.hstack((f[0, n+dk-1:][np.newaxis, :], np.zeros((1, dk))))
-        else:
-            # n = 1:  This happens if pulse sequence starts with nonzero transverse components
-            #         and no RF pulse at t = 0 -- that is, the gradient happens first
-            fp = np.hstack((np.zeros((1, dk)), np.array([[omega[0, 0]]])))
-            fm = np.zeros((1, dk + 1))
-            z = np.hstack((np.array([[omega[2,0]]]), np.zeros((1, dk))))
-    omega_new = np.vstack((fp, fm, z))
-    return omega_new
-
-
 def unit_grad_shift_allocating(omega: Array) -> Array:
     """
     Apply an unit gradient shift to the EPG state.
@@ -347,12 +271,13 @@ def inversion(inversion_efficiency: float) -> Array:
     inversion_op : array
         Inversion efficiency operator.
     """
+    dtype = np.float32
     return np.array(
-        [
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, -inversion_efficiency]
-        ]
+        (
+            (0.0, 0.0, 0.0),
+            (0.0, 0.0, 0.0),
+            (0.0, 0.0, -inversion_efficiency)
+        ), dtype=dtype
     )
 
 
