@@ -7,10 +7,9 @@ Partial jax port of Tom Grieslers pytorch EPG code.
 """
 from types import ModuleType
 
-import jax
 import numpy as np
 
-Array = jax.Array | np.ndarray
+Array = np.ndarray
 np: ModuleType = np
 
 
@@ -116,10 +115,10 @@ def r_epg(T1: float, T2: float, dt: float) -> Array:
     """
     E1 = np.exp(-dt / T1)
     E2 = np.exp(-dt / T2)
-    return np.stack(
-        [np.stack([E2, 0.0, 0.0]),
-         np.stack([0.0, E2, 0.0]),
-         np.stack([0.0, 0.0, E1])]
+    return np.array(
+        ((E2, 0.0, 0.0),
+         (0.0, E2, 0.0),
+         (0.0, 0.0, E1))
     )
 
 
@@ -295,11 +294,11 @@ def unit_grad_shift_allocating(omega: Array) -> Array:
         EPG state matrix after applying the unit gradient shift.
         New shape is (3, n+1).
     """
-    omega = np.hstack([omega, np.zeros((3, 1))])
-    omega = omega.at[0, 1:].set(omega[0, :-1])
-    omega = omega.at[1, :-1].set(omega[1, 1:])
-    omega = omega.at[1, -1].set(0)
-    omega = omega.at[0, 0].set(np.conjugate(omega[1, 0]))
+    omega = np.hstack((omega, np.zeros((3, 1), dtype=omega.dtype)))
+    omega[0, 1:] = omega[0, :-1]
+    omega[1, :-1] = omega[1, 1:]
+    omega[1, -1] = 0.0
+    omega[0, 0] = np.conjugate(omega[1, 0])
     return omega
 
 
@@ -324,10 +323,10 @@ def unit_grad_shift_static(omega: Array) -> Array:
         EPG state matrix after applying the unit gradient shift.
         Shape is (3, N).
     """
-    omega = omega.at[0, 1:].set(omega[0, :-1])
-    omega = omega.at[1, -1].set(0)
-    omega = omega.at[1, :-1].set(omega[1, 1:])
-    omega = omega.at[0, 0].set(np.conjugate(omega[1, 0]))
+    omega[0, 1:] = omega[0, :-1]
+    omega[1, -1] = 0.0
+    omega[1, :-1] = omega[1, 1:]
+    omega[0, 0] = np.conjugate(omega[1, 0])
     return omega
 
 
