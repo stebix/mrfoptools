@@ -83,7 +83,7 @@ def generate_rows(
     mean_max = maxs[0]
 
     colornorm = matplotlib.colors.Normalize(vmin=mean_min, vmax=mean_max)
-    colormap = matplotlib.cm.get_cmap('RdYlGn_r')
+    colormap = matplotlib.colormaps.get_cmap('RdYlGn_r')
 
     rows: list[list[str]] = []
 
