@@ -52,15 +52,9 @@ import jax.numpy as jnp
 import numpy as np
 
 import mrfoptools.epg.core as epg
-
+from mrfoptools.epg.signal.preparations import PreparationType
 
 Array = jax.Array | np.ndarray
-
-
-class PreparationType(enum.Enum):
-    NONE = 0
-    INVERSION = 1
-    T2_PREPARATION = 2
 
 
 JAX_JIT_COMPILE = True
