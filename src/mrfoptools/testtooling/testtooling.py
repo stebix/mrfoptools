@@ -9,7 +9,7 @@ import copy
 from collections.abc import Callable, Sequence, Mapping
 from dataclasses import dataclass
 from enum import Enum
-from typing import Literal, Any
+from typing import Any
 
 import numpy as np
 import jax
@@ -324,48 +324,26 @@ def benchmark(
     return (timings, results)
 
 
-class CompTest:
-    abstol: float = 1e-6
-    reltol: float = 1e-5
-    compilers = COMPILERS
-    wrappers = WRAPPERS
+def assert_pairwise_equivalence(
+    results: list,
+    abstol: float = 1e-6,
+    reltol: float = 1e-5,
+    equal_nan: bool = False
+) -> None:
+    """
+    Assert pairwise equivalence (within float tolerance) of results
+    from different implementations.
+    """
+    for ID, result in results:
+        for other_ID, other_result in results:
+            if ID == other_ID:
+                continue
+            match = np.allclose(
+                result, other_result,
+                atol=abstol, rtol=reltol,
+                equal_nan=equal_nan
+            )
 
-    def __init__(
-        self,
-        jax_impl: Callable,
-        torch_impl: Callable,
-        numpy_impl: Callable,
-        *,
-        abstol: float | None = None,
-        reltol: float | None = None,
-        equal_nan: bool = False,
-    ) -> None:
-        
-        self.impls = self.construct_impls(
-            ('jax', jax_impl),
-            ('torch', torch_impl),
-            ('numpy', numpy_impl)
-        )
-
-        self.abstol = abstol or self.abstol
-        self.reltol = reltol or self.reltol
-        self.equal_nan = equal_nan
-
-
-    def construct_impls(self, *args: tuple[str, Callable]) -> dict[str, Callable]:
-        impls: dict[str, Callable] = {}
-        for name, func in args:
-            impls[name] = func
-            impls[f'{name}_compiled'] = self.compilers[name](func)
-        return impls
-
-
-    def equivalence(self, *args, **kwargs) -> None:
-        """
-        Test equivalence of the implementations.
-        Inputs should be cast as numpy.ndarrays.
-        """
-        for impl in self.impls:
-            wrapper = self.wrappers[impl]
-
-        
+            if not match:
+                msg = (f'value mismatch for implementation: {ID} - {other_ID}')
+                raise AssertionError(msg)
