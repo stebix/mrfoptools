@@ -77,14 +77,15 @@ def load_yun_pattern(type_: Literal['fa', 'tr', 'both'] = 'fa') -> np.ndarray | 
     Load the predefined Yun pattern.
     Flip angle and repetition time patterns are available.
     """
+    dtype: type = np.float32
     if type_ == 'fa':
-        return np.load(YUN_FA_PATTERN_PATH)
+        return np.load(YUN_FA_PATTERN_PATH).astype(dtype)
     elif type_ == 'tr':
-        return np.load(YUN_TR_PATTERN_PATH)
+        return np.load(YUN_TR_PATTERN_PATH).astype(dtype)
 
     return Pattern(
-        flip_angles=np.load(YUN_FA_PATTERN_PATH),
-        repetition_times=np.load(YUN_TR_PATTERN_PATH)
+        flip_angles=np.load(YUN_FA_PATTERN_PATH).astype(dtype),
+        repetition_times=np.load(YUN_TR_PATTERN_PATH).astype(dtype)
     )
 
 
