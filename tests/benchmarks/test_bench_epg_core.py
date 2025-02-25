@@ -1,7 +1,4 @@
-import torch
 import numpy as np
-import jax
-import jax.numpy as jnp
 
 import pytest
 
@@ -19,8 +16,7 @@ from mrfoptools.testtooling.testtooling import (JaxImplementation,
                                                 assert_pairwise_equivalence)
 
 
-from mrfoptools.testtooling.reporting import (aggregate, metrics,
-                                              generate_rows, display_report)
+from mrfoptools.testtooling.reporting import display_report
 
 
 @pytest.mark.benchmark
