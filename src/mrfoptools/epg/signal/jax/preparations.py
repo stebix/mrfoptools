@@ -22,7 +22,7 @@ def prepare_equilibrium_omega(M0: float, max_states: int) -> Array:
     dtype = jnp.complex64
     omega = jnp.hstack(
         (jnp.array([[0.0], [0.0], [M0]], dtype=dtype),
-         jnp.zeros((3, max_states-1), dtype=dtype))
+         jnp.zeros(shape=(3, max_states-1), dtype=dtype))
     )
     return omega
 
