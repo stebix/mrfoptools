@@ -4,7 +4,7 @@ for signal calculations with EPG.
 """
 import numpy as np
 import jax
-
+import numba as nb
 
 import mrfoptools.epg.signal.numpy as npysig
 import mrfoptools.epg.signal.numpy.preparations as npysigprep
@@ -79,3 +79,30 @@ def test_benchmark_epg_signal():
     display_report(rt, header='signal benchmarking test')
 
     assert_pairwise_equivalence(rr)
+
+
+
+def test_benchmark_epg_signal_compileoptions():
+    jaxfunc = jax.jit(jaxsig.compute_signal_optimized)
+    numpyfunc = nb.jit(npysig.compute_signal_numpynaive,
+                       nopython=True,
+                       fastmath=True, parallel=False, nogil=True)
+
+    numpyimpl = NumpyImplementation(
+        func=numpyfunc, ID='numpy_compiled'
+    )
+    jaximpl = JaxImplementation(
+        func=jaxfunc, ID='jax_compiled'
+    )
+
+    kwargs = init_helper()
+
+    implementations = [numpyimpl, jaximpl]
+
+    rt, rr = benchmark(implementations, kwargs=kwargs, repeats=100)
+
+    display_report(rt, header='signal benchmarking test')
+
+    assert_pairwise_equivalence(rr)
+
+
