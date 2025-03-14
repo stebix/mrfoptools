@@ -1,11 +1,7 @@
 """
 Test sequence numpy implementations.
 """
-import numpy as np
-import jax
-
 from mrfoptools.epg.sequences.numpy.fisp import simulate_fisp
-from mrfoptools.epg.sequences.jax.fisp import simulate_fisp as simulate_fisp_jax
 
 from mrfoptools.epg.sequences.helpers import get_basic_configuration, extract_specialization_kwargs, quickmake_simulate_fisp
 
