@@ -271,7 +271,7 @@ def inversion(inversion_efficiency: float) -> Array:
     inversion_op : array
         Inversion efficiency operator.
     """
-    dtype = np.float32
+    dtype = np.complex64
     return np.array(
         (
             (0.0, 0.0, 0.0),
