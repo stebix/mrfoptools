@@ -1,7 +1,6 @@
 """
 Test sequence numpy implementations.
 """
-import os
 import numpy as np
 import time
 import tqdm
@@ -43,7 +42,7 @@ def main():
 
             for _ in range(repeats):
                 tstart = time.time()
-                sigs = simulate_fisp_jit(
+                sigs = simulate_fisp_jit(   # noqa: F841
                     fa=fa,
                     TR=TR,
                     **kwargs
