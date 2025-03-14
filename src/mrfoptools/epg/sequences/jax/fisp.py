@@ -12,6 +12,7 @@ from jax import Array
 
 import mrfoptools.epg.core.jax as epgjax
 import mrfoptools.epg.signal.jax as epgsig
+import mrfoptools.epg.signal.jax.preparations as jaxprep
 
 
 def _simulate_fisp(
@@ -33,12 +34,12 @@ def _simulate_fisp(
     r_TE = epgjax.r_epg(T1=T1, T2=T2, dt=TE)
     inv_op = epgjax.inversion(inversion_efficiency)
 
-    omega = epgsig.prepare_inversion_omega(T1=T1,
-                                           T2=T2,
-                                           M0=M0,
-                                           TI=TI,
-                                           inversion_operator=inv_op,
-                                           max_states=max_states)
+    omega = jaxprep.prepare_inversion_omega(T1=T1,
+                                            T2=T2,
+                                            M0=M0,
+                                            TI=TI,
+                                            inversion_operator=inv_op,
+                                            max_states=max_states)
     
     # Compute the signal for the current (T1, T2) pair
     s = epgsig.compute_signal_optimized(
