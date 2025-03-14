@@ -10,7 +10,8 @@ import jax.numpy as jnp
 from jax import Array
 
 import mrfoptools.epg.core as epg
-import mrfoptools.epg.signal.signal as epgsig
+import mrfoptools.epg.signal.jax as epgsig
+import mrfoptools.epg.signal.jax.preparations as epgprep
 
 
 
@@ -100,7 +101,7 @@ def legacy_orthogonality_criterion(
         fa: Array,
         TR: Array,
         phases: Array,
-        preparation: epgsig.PreparationType,
+        preparation: epgprep.PreparationType,
         TI: Array,
         TE: float,
         inversion_efficiency: float = 1.0,
@@ -194,11 +195,11 @@ def legacy_orthogonality_criterion(
         r_TE = epg.r_epg(T1=T1[idx], T2=T2[idx], dt=TE)
         inv_op = epg.inversion(inversion_efficiency)
 
-        omega = epgsig.prepare_inversion_omega(T1=T1[idx], T2=T2[idx],
-                                               M0=M0,
-                                               TI=TI,
-                                               inversion_operator=inv_op,
-                                               max_states=MAX_STATES)
+        omega = epgprep.prepare_inversion_omega(T1=T1[idx], T2=T2[idx],
+                                                M0=M0,
+                                                TI=TI,
+                                                inversion_operator=inv_op,
+                                                max_states=MAX_STATES)
         
         # Compute the signal for the current (T1, T2) pair
         s = epgsig.compute_signal_optimized(
