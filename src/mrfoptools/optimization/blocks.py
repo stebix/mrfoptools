@@ -9,9 +9,9 @@ from collections.abc import Callable
 
 import jax
 
-import mrfoptools.epg.core as epg
-from mrfoptools.epg.signal.signal import (compute_signal_optimized,
-                                          prepare_inversion_omega)
+import mrfoptools.epg.core.jax as epg
+from mrfoptools.epg.signal.jax import compute_signal_optimized
+from mrfoptools.epg.signal.jax.preparations import prepare_inversion_omega
 
 def forward(
         T1: float,
