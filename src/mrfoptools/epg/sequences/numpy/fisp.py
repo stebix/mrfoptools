@@ -5,13 +5,28 @@ High level interface to generate signal tensors for simulation of sequences.
 """
 import functools
 from collections.abc import Callable
+import warnings
+import logging
 
 import numpy as np
-import numba as nb
 
 import mrfoptools.epg.core.numpy as npycore
 import mrfoptools.epg.signal.numpy as npysig
 import mrfoptools.epg.signal.numpy.preparations as npyprep
+
+DEFAULT_LOGGER_NAME: str = '.'.join(('main', __name__))
+logger = logging.getLogger(DEFAULT_LOGGER_NAME)
+
+# TODO: This is awkward - Remove this when simple and coherent envrionment specification for joint
+#       usage of numba, torch and jax is established. 
+try:
+    import numba as nb
+except ImportError:
+    msg: str = 'Numba not found. Using uncompiled numpy fallback implementation.'
+    warnings.warn(msg)
+    logger.warning(msg)    
+    import mrfoptools.testtooling.nbmock as nb
+
 
 Array = np.ndarray
 
