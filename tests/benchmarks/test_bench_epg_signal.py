@@ -2,9 +2,11 @@
 Benchmark runtime performance of backend implementations
 for signal calculations with EPG.
 """
+import warnings
+import logging
+
 import numpy as np
 import jax
-import numba as nb
 
 import mrfoptools.epg.signal.numpy as npysig
 import mrfoptools.epg.signal.numpy.preparations as npysigprep
@@ -22,6 +24,20 @@ from mrfoptools.testtooling.testtooling import (JaxImplementation,
 from mrfoptools.testtooling.reporting import display_report
 
 from mrfoptools.initialization.initialization import load_yun_pattern
+
+
+DEFAULT_LOGGER_NAME: str = '.'.join(('main', __name__))
+logger = logging.getLogger(DEFAULT_LOGGER_NAME)
+
+# TODO: This is awkward - Remove this when simple and coherent envrionment specification for joint
+#       usage of numba, torch and jax is established. 
+try:
+    import numba as nb
+except ImportError:
+    msg: str = 'Numba not found. Using uncompiled numpy fallback implementation.'
+    warnings.warn(msg)
+    logger.warning(msg)    
+    import mrfoptools.testtooling.nbmock as nb
 
 
 def init_helper() -> dict:
