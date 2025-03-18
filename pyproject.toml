@@ -39,7 +39,9 @@ dependencies = [
   "scikit-image",
   "pytest",
   "optax",
-  "zarr < 3.0"
+  "zarr >= 3.0",
+  "numba",
+  "attrs"
 ]
 
 [project.urls]
