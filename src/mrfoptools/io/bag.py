@@ -1,7 +1,7 @@
 import datetime
 import logging
 from collections.abc import Mapping, Sequence
-from typing import Any, TypeAlias, Union
+from typing import Any, TypeAlias, Union, NamedTuple
 from pathlib import Path
 from numbers import Number
 
@@ -16,6 +16,16 @@ logger = logging.getLogger(DEFAULT_LOGGER_NAME)
 
 PathLike = str | Path
 Array = jax.Array | np.ndarray
+
+ArrayLike = np.ndarray | Sequence[Number]
+# DataMapping intended to reference nested dictionaries of numpy arrays
+# or sequences of numbers that can be written to zarr arrays directly.
+DataMapping: TypeAlias = Mapping[str, Union['DataMapping', ArrayLike]]
+
+# Jsonifiable intended to reference data types that can be serialized to JSON.
+# This is utilized for metadata mappings that are stored as attributes in zarr groups.
+Jsonifiable = str | int | float | bool | None | Mapping[str, 'Jsonifiable'] | Sequence['Jsonifiable']
+MetadataMapping: TypeAlias = Mapping[str, Union['MetadataMapping', Jsonifiable]]
 
 
 class Metadata:
@@ -41,46 +51,6 @@ class OptimizationBag:
     results: Mapping[str, Any] = field(repr=False)
     metadata: Metadata = field(repr=False)
 
-
-
-protocol = {
-    'NR' : 1000,
-    'phases' : np.linspace(0, 2 * np.pi, 100),
-    'TE' : 0.01,
-    'n_controlpoints' : 10,
-}
-
-hyperparameters = {
-    'learning_rate' : 0.01,
-    'n_iterations' : 1000,
-    'n_samples' : 100,
-    'bathtub_parameters' : {
-        'alpha' : 0.1,
-        'beta' : 0.3,
-        'gamma' : 0.7,
-        'delta' : 2.5
-    }
-}
-
-NITER = 500
-NR = 1000
-
-histories = {
-    'fa' : np.zeros((NITER, NR)),
-    'tr' : np.zeros((NITER, NR)),
-    'cost' : np.zeros(NITER),
-    'irregularly_logged_gradient' : {
-        'iterations' : np.array([1, 250, 300, 499]),                        
-        'values' : np.zeros((4, NR))
-    }
-}
-
-
-ArrayLike = np.ndarray | Sequence[Number]
-DataMapping: TypeAlias = Mapping[str, Union['DataMapping', ArrayLike]]
-
-Jsonifiable = str | int | float | bool | None | Mapping[str, 'Jsonifiable'] | Sequence['Jsonifiable']
-MetadataMapping: TypeAlias = Mapping[str, Union['MetadataMapping', Jsonifiable]]
 
 
 def datamappings_are_equal(
@@ -138,3 +108,46 @@ def store_metadatalike(
     logger.info(f'Successfully stored metadata mapping to {group}')
     return None
 
+
+class GroupKeys(NamedTuple):
+    array_keys: set[str]
+    subgroup_keys: set[str]
+
+def retrieve_keys(
+    group: zarr.Group
+) -> tuple[set[str], set[str]]:
+    """
+    Retrieve all keys of a `zarr.Group` object and sort into array keys and subgroup keys.
+
+    Parameters
+    ----------
+    group : zarr.Group
+        The group to retrieve keys from.
+
+    Returns
+    -------
+    GroupKeys
+        A named tuple with the keys sorted into array keys and
+    """
+    array_keys = set(group.array_keys())
+    subgroup_keys = set(group.keys()) - array_keys
+    return GroupKeys(array_keys=array_keys, subgroup_keys=subgroup_keys)
+
+
+ArrayMapping = Mapping[str, Union[np.ndarray, 'ArrayMapping']]  
+
+
+def load_group(
+    group: zarr.Group
+) -> DataMapping:
+    """
+    Eagerly load the content - arrays and subgroups - of a `zarr.Group` object
+    into a dictionary.
+    """
+    keys = retrieve_keys(group)
+    data = {
+        key : group[key][...]
+        for key in keys.array_keys
+    }
+    subdata = {key : load_group(group[key]) for key in keys.subgroup_keys}
+    return data | subdata
