@@ -3,6 +3,9 @@ Tooling to perform gradient-based optimization on MRF sequences.
 
 @Author: Jannik Stebani 2025
 """
+# ruff: noqa: F841
+# ruff: noqa: F401
+
 import time
 import numpy as np
 import jax.numpy as jnp
@@ -195,14 +198,13 @@ def run_experiment():
     diaglogger = tbdiag.TensorboardLogger(writer, relative_gain_evaluator=relative_gain_evaluator)
 
     fa_history = []
-    cost_history = []
+    cost_history = [] # noqa: F841
 
     for iteration in tqdm.trange(max_iterations, leave=True):
         
         fa_history.append(fa)
         
         cost_grad_mapping = cost_grad_function(T1, T2, fa)
-        
         cost_grad_mapping_numpy = costgrad.cast_to_numpy(cost_grad_mapping)
 
         diaglogger.log_costs(cost_grad_mapping_numpy, iteration)
@@ -222,14 +224,6 @@ def run_experiment():
         fa = optax.apply_updates(fa, update)
         fa = optax.projections.projection_box(fa, lower=min_fa, upper=max_fa)
         
-        if False:
-            if iteration % log_every_n == 0:
-                fig, ax = plt.subplots()
-                alphas = np.asarray(jnp.rad2deg(fa))
-                ax.plot(alphas)
-                writer.add_figure(tag='plots/fa-trajectory', figure=fig, global_step=iteration)
-                
-                log_signals(fa, iteration)
 
 if __name__ == '__main__':
     run_experiment()

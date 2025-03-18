@@ -1,5 +1,4 @@
 import pytest
-from functools import wraps
 
 def skip_if_import_error(import_name):
     """Skip test if the specified import is unavailable."""
