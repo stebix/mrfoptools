@@ -43,7 +43,7 @@ class OptimizationBag:
         return s
 
 def _store_bag_to_group(
-        group: zarr.hierarchy.Group,
+        group: zarr.Group,
         bag: OptimizationBag
 ) -> None:
     """
