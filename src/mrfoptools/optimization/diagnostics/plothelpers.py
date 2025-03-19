@@ -4,7 +4,6 @@ PLotting utilities specialized for in-progress diagnostics and evaluation.
 @Author: Jannik Stebani 2025
 """
 import logging
-import attrs
 import matplotlib.pyplot as plt
 import numpy as np
 import jax
