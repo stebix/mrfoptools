@@ -34,7 +34,8 @@ import mrfoptools.optimization.gradtools.gradtools as gradtools
 
 import mrfoptools.optimization.diagnostics.tensorboard as tbdiag
 
-from mrfoptools.optimization.diagnostics.tensorboard import RelativeGainEvaluator, BaseCost
+from mrfoptools.optimization.diagnostics.plothelpers import Plotter
+from mrfoptools.optimization.diagnostics.tensorboard import RelativeGainEvaluator, BaseCost, TensorboardLogger
 from mrfoptools.optimization.diagnostics.diagnostics import CostValueRange
 
 
@@ -148,7 +149,7 @@ def run_experiment():
     cost_grad_function = cost_grad_builder(cg_functions)
 
 
-    logdir = Path('/home/jannik/storage/mrf-optruns-march-exp/trial-6')
+    logdir = Path('/home/jannik/storage/mrf-optruns-march-exp/trial-13')
     logdir.mkdir()
 
     writer = SummaryWriter(log_dir=logdir)
@@ -159,6 +160,30 @@ def run_experiment():
     initial_fa = initial_fa
 
     log_every_n: int = 3
+
+    fa_plotter = Plotter(
+        baseline_data=np.asarray(jnp.rad2deg(initial_fa)),
+        title='FA Optimization',
+        xlabel='NR index',
+        ylabel='FA [deg]',
+        legend=False,
+        grid=True,
+        ylim=(0, 90),
+        xlim=(0, 1000),
+        baseline_data_plot_kwargs={'label': 'initial',
+                                   'ls' : 'dotted',
+                                   'color' : 'black',
+                                   'alpha' : 0.5},
+    )
+    signal_plotter = Plotter(
+        title='Signal Optimization',
+        xlabel='NR index',
+        ylabel='Signal',
+        legend=False,
+        grid=True,
+        ylim=(-0.5, 0.5),
+        xlim=(0, 1000),
+    )
 
 
     fa = initial_fa.copy()
@@ -195,7 +220,12 @@ def run_experiment():
         BaseCost(costname='totvar', refname='constfa-base', value=constinit_base_totvar_cost, range=CostValueRange.POSITIVE)
     ]
     relative_gain_evaluator = RelativeGainEvaluator(*base_costs)
-    diaglogger = tbdiag.TensorboardLogger(writer, relative_gain_evaluator=relative_gain_evaluator)
+
+    diaglogger = tbdiag.TensorboardLogger(
+        writer,
+        fa_plotter=fa_plotter,
+        signal_plotter=signal_plotter,
+        relative_gain_evaluator=relative_gain_evaluator)
 
     fa_history = []
     cost_history = [] # noqa: F841
@@ -212,7 +242,11 @@ def run_experiment():
         diaglogger.log_cosine_similarities(cost_grad_mapping_numpy, iteration)
         diaglogger.log_gradient_magnitude_similarities(cost_grad_mapping_numpy, iteration)
         diaglogger.log_relative_gains(cost_grad_mapping_numpy, iteration)
-    
+
+        signals = np.asarray(forward_jit(T1, T2, fa))
+        diaglogger.log_flipangles(fa, iteration)
+        diaglogger.log_signals(signals, iteration)
+
         # ortho_grad_surgical = ortho_grad - jnp.dot(ortho_grad, sig_grad) / jnp.linalg.norm(sig_grad, ord=2) * sig_grad
         #gradients = jnp.stack([sig_grad, tv_grad, ortho_grad], axis=0)
         #gradient = compute_conFIG_gradient(gradients)
