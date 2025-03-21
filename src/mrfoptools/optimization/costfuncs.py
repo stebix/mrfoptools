@@ -4,11 +4,13 @@ optimization of the MR Fingerprinting sequence.
 
 @author: Jannik Stebani 2025
 """
-from collections.abc import Sequence
+import functools
+from collections.abc import Sequence, Callable
 
+import jax
 import jax.numpy as jnp
-from jax import Array
 
+from jax import Array
 
 
 def orthogonality_criterion(signals: Array) -> Array:
@@ -82,3 +84,101 @@ def create(spec: Sequence[dict[str, float | str]]) -> Array:
     """
     raise NotImplementedError('not yet')
 
+
+def bathtub_loss(
+        x: Array,
+        radius: float = 1.0,
+        alpha: float = 0.1,
+        beta: float = 0.5,
+        gamma: float = 5.0
+    ) -> Array:
+    """
+    Specialized bathtub loss function with flat valley and smooth transition
+    to quadratic loss outside the valley.
+    
+    Parameters
+    ----------
+    x : Array
+        Input data, i.e. the free variable.
+
+    radius : float, optional
+        Width of the flat valley, by default 1.0.
+
+    alpha : float, optional
+        Weight of the inner quadratic loss, by default 0.1.
+        Controls steepness of the valley edges in the
+        transition zones. This also affects the gradients
+        in the transition zones.
+
+    beta : float, optional
+        Weight of the outer quadratic loss, by default 0.5.
+        This is the standard quadratic loss outside the valley.
+        Controls overall steepness of the loss function.
+
+    gamma : float, optional
+        Controls the interpolation between the inner and outer
+        loss functions. Higher values effect transitions
+        zones with higher curvature, in turn effecting the
+        gradients in the transition zones.
+        Default is 5.0.
+
+    Returns
+    -------
+    Array
+        Loss function value.
+    """
+    # Small quadratic loss near zero
+    inner_loss = alpha * (x**2)
+    # Standard quadratic loss outside
+    outer_loss = beta * (x**2)
+    # Smooth transition using sigmoid
+    weight = jax.nn.sigmoid((jnp.abs(x) - radius) * gamma)
+    # Blend the two losses
+    return weight * outer_loss + (1 - weight) * inner_loss
+
+
+
+def construct_bathtub_loss(
+    radius: float,
+    alpha: float,
+    beta: float,
+    gamma: float
+) -> Callable[[jax.Array], jax.Array]:
+    """
+    Fix a bathtub loss function with given parameters.
+
+    Parameters
+    ----------
+    x : Array
+        Input data, i.e. the free variable.
+
+    radius : float, optional
+        Width of the flat valley, by default 1.0.
+
+    alpha : float, optional
+        Weight of the inner quadratic loss, by default 0.1.
+        Controls steepness of the valley edges in the
+        transition zones. This also affects the gradients
+        in the transition zones.
+
+    beta : float, optional
+        Weight of the outer quadratic loss, by default 0.5.
+        This is the standard quadratic loss outside the valley.
+        Controls overall steepness of the loss function.
+
+    gamma : float, optional
+        Controls the interpolation between the inner and outer
+        loss functions. Higher values effect transitions
+        zones with higher curvature, in turn effecting the
+        gradients in the transition zones.
+        Default is 5.0.
+
+    Returns
+    -------
+    Callable
+        Single-argument bathtub loss function.
+    """
+    return functools.partial(
+        bathtub_loss,
+        radius=radius, alpha=alpha, beta=beta, gamma=gamma
+    )
