@@ -95,12 +95,12 @@ def load_optimization_bag(
     store = zarr.storage.LocalStore(path)
     root = zarr.group(store=store)
 
-    protocol = zarrinterface.load_group(root['protocol'])
-    hyperparameters = zarrinterface.load_group(root['hyperparameters'])
-    histories = zarrinterface.load_group(root['histories'])
-    initializations = zarrinterface.load_group(root['initializations'])
-    results = zarrinterface.load_group(root['results'])
-    metadata = zarrinterface.load_group(root['metadata'])
+    protocol = zarrinterface.load(root['protocol'])
+    hyperparameters = zarrinterface.load(root['hyperparameters'])
+    histories = zarrinterface.load(root['histories'])
+    initializations = zarrinterface.load(root['initializations'])
+    results = zarrinterface.load(root['results'])
+    metadata = zarrinterface.load(root['metadata'])
 
     bag = OptimizationBag(
         protocol=protocol,

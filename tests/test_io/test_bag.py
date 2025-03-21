@@ -1,12 +1,11 @@
 import numpy as np
 import zarr
 
-from mrfoptools.io.bag import (datamappings_are_equal,
-                               OptimizationBag,
+from mrfoptools.io.bag import (OptimizationBag,
                                store_optimization_bag,
                                )
 from mrfoptools.io.zarrinterface import load_group, store_datalike, store_metadatalike
-
+from mrfoptools.io.mappingtypes import datamappings_are_equal
 
 def test_store_datalike(tmp_path):
     test_dir = tmp_path / 'test-1'
