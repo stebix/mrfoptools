@@ -1,5 +1,6 @@
 from collections.abc import Mapping, Callable
 from numbers import Number
+from typing import Protocol
 
 import attrs
 import jax
@@ -10,9 +11,10 @@ import numpy as np
 import mrfoptools.optimization.diagnostics.diagnostics as diag
 import mrfoptools.optimization.gradtools.gradtools as gradtools
 
-from mrfoptools.optimization.costgrad import NumpyCostGradTuple
+from mrfoptools.optimization.costgrad import NumpyCostGradTuple, CostContainer, GradientContainer
 
 from mrfoptools.optimization.diagnostics.plothelpers import Plotter
+
 
 ArrayLike = np.ndarray | jax.Array
 
@@ -20,7 +22,7 @@ class _DiagnosticLogger:
 
     def log_gradients(
         self,
-        cost_grad_mapping: Mapping[str, NumpyCostGradTuple],
+        grad_mapping: Mapping[str, GradientContainer],
         iteration: int
     ) -> None:
         """Log the gradient(s) of the cost function(s)."""
@@ -28,7 +30,7 @@ class _DiagnosticLogger:
     
     def log_costs(
         self,
-        cost_grad_mapping: Mapping[str, NumpyCostGradTuple],
+        cost_mapping: Mapping[str, CostContainer],
         iteration: int
     ) -> None:
         """Log the cost value(s) of the cost function(s)."""
@@ -56,6 +58,26 @@ class _DiagnosticLogger:
 class BaseCost:
     """
     Container for base cost values.
+
+    Parameters
+    ----------
+    costname : str
+        Name of the base cost function. This ID string is used
+        to match base costs with transient costs downstream.
+
+    refname : str
+        Name of the reference parameters that
+        were used to compute the base cost. This is typically
+        a certain initialization (e.g. Yun or Cao or constant pattern)
+
+    value : Number
+        Scalar value of the base cost computed with the reference
+        parameters.
+
+    range : diag.CostValueRange
+        Range of the cost value. Determines whether the cost value
+        is negative (always and unbounded) or positive.
+        Usage is for downstream relative gain computation.
     """
     costname: str
     refname: str
@@ -67,9 +89,13 @@ class RelativeGainEvaluator:
     """
     Compute relative gains of cost functions with respect to base costs.
     
-    Relative gains are computed by matching base costs set in the initializer method
-    via their `costname` to supplied transient costs in the
-    `cost_grad_mapping` argument of the `__call__` method.
+    Relative gains are computed by matching base costs from the initializer method
+    via their `costname` to supplied transient cost values in the
+    `transient_costs` argument of the `__call__` method.
+
+    Note: The `transient_costs` argument is expected to provide a cost value for 
+          each base cost in the initializer method. If a base cost is not found in
+          `transient_costs`, a `KeyError` is raised.
     """
     def __init__(
         self,
@@ -81,17 +107,17 @@ class RelativeGainEvaluator:
 
     def __call__(
         self,
-        cost_grad_mapping: Mapping[str, NumpyCostGradTuple]
+        transient_costs: Mapping[str, CostContainer]
     ) -> dict[str, float]:
         
         relative_gains: dict[str, float] = {}
         for base_cost in self.base_costs:
             logname = f'{self.prefix}/{base_cost.costname}-{base_cost.refname}'
-            cg_tuple = cost_grad_mapping[base_cost.costname]
-            if base_cost.range == diag.CostValueRange.POSITIVE:
-                relative_gain = base_cost.value / cg_tuple.cost
-            elif base_cost.range == diag.CostValueRange.NEGATIVE:
-                relative_gain = cg_tuple.cost / base_cost.value
+            cost_container = transient_costs[base_cost.costname]
+            if base_cost.range is diag.CostValueRange.POSITIVE:
+                relative_gain = base_cost.value / cost_container.cost
+            elif base_cost.range is diag.CostValueRange.NEGATIVE:
+                relative_gain = cost_container.cost / base_cost.value
             else:
                 raise ValueError(f'Invalid cost value range: {base_cost.range}')
             
@@ -109,6 +135,8 @@ def rad2deg(fa: ArrayLike) -> ArrayLike:
 
 def imag(signal: ArrayLike) -> ArrayLike:
     return jnp.imag(signal)
+
+
 
 class TensorboardLogger:
     """
@@ -145,42 +173,42 @@ class TensorboardLogger:
 
     def log_gradients(
         self,
-        cost_grad_mapping: Mapping[str, NumpyCostGradTuple],
+        grad_mapping: Mapping[str, GradientContainer],
         iteration: int
     ) -> None:
-        diag.log_costs(cost_grad_mapping, self.writer, iteration)
+        diag.log_costs(grad_mapping, self.writer, iteration)
 
     def log_costs(
         self,
-        cost_grad_mapping: Mapping[str, NumpyCostGradTuple],
+        cost_mapping: Mapping[str, CostContainer],
         iteration: int
     ) -> None:
-        diag.log_costs(cost_grad_mapping, self.writer, iteration)
+        diag.log_costs(cost_mapping, self.writer, iteration)
 
     def log_cosine_similarities(
         self,
-        cost_grad_mapping: Mapping[str, NumpyCostGradTuple],
+        grad_mapping: Mapping[str, GradientContainer],
         iteration: int
     ) -> None:
-        cosine_similarities = gradtools.compute_gradient_cosine_similarities(cost_grad_mapping)
+        cosine_similarities = gradtools.compute_gradient_cosine_similarities(grad_mapping)
         diag.log_cosine_similarities(cosine_similarities, self.writer, iteration)
 
     def log_gradient_magnitude_similarities(
         self,
-        cost_grad_mapping: Mapping[str, NumpyCostGradTuple],
+        grad_mapping: Mapping[str, GradientContainer],
         iteration: int
     ) -> None:
-        magnitude_similarities = gradtools.compute_gradient_magnitude_similarities(cost_grad_mapping)
+        magnitude_similarities = gradtools.compute_gradient_magnitude_similarities(grad_mapping)
         diag.log_gradient_magnitude_similarities(magnitude_similarities, self.writer, iteration)
 
     def log_relative_gains(
         self,
-        cost_grad_mapping: Mapping[str, NumpyCostGradTuple],
+        cost_mapping: Mapping[str, CostContainer],
         iteration: int
     ) -> None:
         if not self.relative_gain_evaluator:
             return
-        relative_gains = self.relative_gain_evaluator(cost_grad_mapping)
+        relative_gains = self.relative_gain_evaluator(cost_mapping)
         for tag, value in relative_gains.items():
             self.writer.add_scalar(tag=tag, scalar_value=float(value), global_step=iteration)
 
