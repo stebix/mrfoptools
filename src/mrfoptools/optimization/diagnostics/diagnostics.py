@@ -10,7 +10,7 @@ import jax
 import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 
-from mrfoptools.optimization.costgrad import NumpyCostGradTuple
+from mrfoptools.optimization.costgrad import NumpyCostGradTuple, CostContainer, GradientContainer
 
 
 class CostValueRange(enum.Enum):
@@ -19,7 +19,7 @@ class CostValueRange(enum.Enum):
 
 
 def log_costs(
-    cost_grad_mapping: Mapping[str, NumpyCostGradTuple],
+    cost_mapping: Mapping[str, CostContainer],
     writer: SummaryWriter,
     iteration: int
 ) -> None:
@@ -27,13 +27,13 @@ def log_costs(
     Log scalar cost values for arbitrary (sub-) objectives to a summary writer.
     """
     prefix: str = 'costs'
-    for name, cg_tuple in cost_grad_mapping.items():
+    for name, cost_container in cost_mapping.items():
         tag = '/'.join((prefix, name))
-        writer.add_scalar(tag=tag, scalar_value=cg_tuple.cost, global_step=iteration)
+        writer.add_scalar(tag=tag, scalar_value=cost_container.cost, global_step=iteration)
 
 
 def log_gradient_histograms(
-    cost_grad_mapping: Mapping[str, NumpyCostGradTuple],
+    grad_mapping: Mapping[str, GradientContainer],
     writer: SummaryWriter,
     iteration: int
 ) -> None:
@@ -41,9 +41,9 @@ def log_gradient_histograms(
     Log gradient as histograms.
     """
     prefix: str = 'gradhists'
-    for name, cg_tuple in cost_grad_mapping.items():
+    for name, grad_container in grad_mapping.items():
         tag = '/'.join((prefix, name))
-        writer.add_histogram(tag=tag, values=cg_tuple.grad.ravel(), global_step=iteration)
+        writer.add_histogram(tag=tag, values=grad_container.grad.ravel(), global_step=iteration)
 
 
 def log_cosine_similarities(
