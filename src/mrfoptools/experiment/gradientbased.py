@@ -6,6 +6,7 @@ Tooling to perform gradient-based optimization on MRF sequences.
 # ruff: noqa: F841
 # ruff: noqa: F401
 
+import argparse
 import time
 import numpy as np
 import jax.numpy as jnp
@@ -14,6 +15,9 @@ import optax
 import matplotlib.pyplot as plt
 import tqdm
 import itertools
+import pickle
+import datetime
+import zoneinfo
 from numbers import Number
 from functools import partial
 
@@ -38,26 +42,20 @@ from mrfoptools.optimization.diagnostics.plothelpers import Plotter
 from mrfoptools.optimization.diagnostics.tensorboard import RelativeGainEvaluator, BaseCost, TensorboardLogger
 from mrfoptools.optimization.diagnostics.diagnostics import CostValueRange
 
+from mrfoptools.io.bag import OptimizationBag, store_optimization_bag
 
 
-def smooth_blend_loss(x, delta=1.0, alpha=0.1):
-    # Small quadratic loss near zero
-    inner_loss = alpha * (x**2)
-    # Standard quadratic loss outside
-    outer_loss = 0.5 * (x**2)
-    # Smooth transition using sigmoid
-    weight = jax.nn.sigmoid((jnp.abs(x) - delta) * 10)
-    # Blend the two losses
-    return weight * outer_loss + (1 - weight) * inner_loss
-
+bathtub_loss = costfuncs.construct_bathtub_loss(
+    radius=2.0, alpha=0.1, beta=0.5, gamma=10
+)
 
 def fa_diff_loss(fa: jax.Array):
     diff = fa[1:] - fa[:-1]
-    smoothed = smooth_blend_loss(diff, delta=2.0, alpha=0.1)
+    smoothed = bathtub_loss(diff)
     return jnp.linalg.norm(smoothed, ord=2)
 
 
-def run_experiment():
+def run_experiment(logdir_suffix: str):
 
     # optimization setting
     NR = 1000
@@ -96,6 +94,7 @@ def run_experiment():
 
     print(f'T1 elements: {T1.shape}')
     print(f'T2 elements: {T2.shape}')
+
 
     forward_fatr = epgfisp.specialize_simulate_fisp(
         T1=T1, T2=T2, M0=M0, phases=phases, TE=TE, TI=TI,
@@ -149,7 +148,7 @@ def run_experiment():
     cost_grad_function = cost_grad_builder(cg_functions)
 
 
-    logdir = Path('/home/jannik/storage/mrf-optruns-march-exp/trial-13')
+    logdir = Path(f'/home/jannik/storage/mrf-optruns-march-exp/trial-{logdir_suffix}')
     logdir.mkdir()
 
     writer = SummaryWriter(log_dir=logdir)
@@ -157,7 +156,38 @@ def run_experiment():
     key = jax.random.key(seed)
 
 
-    initial_fa = initial_fa
+    initial_fa = yun_fa_manual
+
+    protocol = {
+        'T1': T1.tolist(),
+        'T2': T2.tolist(),
+        'TE': TE,
+        'TI': TI,
+        'phase': const_phase,
+        'inversion_efficiency': inversion_efficiency,
+        'max_states': max_states,
+        'M0': M0,
+        'NR': NR,
+    }
+    initializations = {
+        'fa': np.asarray(initial_fa),
+        'tr': np.asarray(tr_pattern),
+        'seed': 1337
+    }
+    hyperparameters = {
+        'step_size': step_size,
+        'max_iterations': max_iterations,
+        'min_fa': min_fa,
+        'max_fa': max_fa
+    }
+    metadata = {
+        'timestamp' : (datetime.
+                       datetime.
+                       now(tz=zoneinfo.ZoneInfo('Europe/Berlin')).
+                       isoformat()),
+        'git_hash' : 'pseudo-git-hash :)',
+    }
+
 
     log_every_n: int = 3
 
@@ -168,7 +198,7 @@ def run_experiment():
         ylabel='FA [deg]',
         legend=False,
         grid=True,
-        ylim=(0, 90),
+        ylim=(0, 94),
         xlim=(0, 1000),
         baseline_data_plot_kwargs={'label': 'initial',
                                    'ls' : 'dotted',
@@ -184,7 +214,6 @@ def run_experiment():
         ylim=(-0.5, 0.5),
         xlim=(0, 1000),
     )
-
 
     fa = initial_fa.copy()
 
@@ -229,6 +258,7 @@ def run_experiment():
 
     fa_history = []
     cost_history = [] # noqa: F841
+    sig_history = []
 
     for iteration in tqdm.trange(max_iterations, leave=True):
         
@@ -237,6 +267,8 @@ def run_experiment():
         cost_grad_mapping = cost_grad_function(T1, T2, fa)
         cost_grad_mapping_numpy = costgrad.cast_to_numpy(cost_grad_mapping)
 
+        cost_history.append(cost_grad_mapping_numpy)
+
         diaglogger.log_costs(cost_grad_mapping_numpy, iteration)
         diaglogger.log_gradients(cost_grad_mapping_numpy, iteration)
         diaglogger.log_cosine_similarities(cost_grad_mapping_numpy, iteration)
@@ -244,6 +276,7 @@ def run_experiment():
         diaglogger.log_relative_gains(cost_grad_mapping_numpy, iteration)
 
         signals = np.asarray(forward_jit(T1, T2, fa))
+        sig_history.append(signals)
         diaglogger.log_flipangles(fa, iteration)
         diaglogger.log_signals(signals, iteration)
 
@@ -257,8 +290,49 @@ def run_experiment():
         update, optimizer_state = optimizer.update(gradient, optimizer_state, fa)
         fa = optax.apply_updates(fa, update)
         fa = optax.projections.projection_box(fa, lower=min_fa, upper=max_fa)
-        
+
+    # save stuff
+    test_data = {
+        'fa_history': fa_history,
+        'cg_history': cost_history,
+        'sig_history': sig_history,
+    }
+    savepath = logdir / 'rundata.pkl'
+
+    with open(savepath, 'wb') as f:
+        pickle.dump(test_data, f)
+
+
+    hist_data_np = {
+        'fa_history': np.asarray(fa_history),
+        'cg_history': np.asarray(cost_history),
+        'sig_history': np.asarray(sig_history).astype(np.float32),
+    }
+
+    bag = OptimizationBag(
+        protocol=protocol,
+        hyperparameters=hyperparameters,
+        histories=hist_data_np,
+        initializations=initializations,
+        results={},
+        metadata=metadata
+    )
+    # store_optimization_bag(bag, logdir / 'optbag.zarr')
+
+
+def make_parser():
+    parser = argparse.ArgumentParser(
+        description='Run an optimization experiment on the MRF sequence.'
+    )
+    parser.add_argument(
+        'logdir_suffix',
+        type=str,
+        help='Suffix for logging directory to store the optimization run data.'
+    )
+    return parser
 
 if __name__ == '__main__':
-    run_experiment()
+    parser = make_parser()
+    args = parser.parse_args()
+    run_experiment(logdir_suffix=args.logdir_suffix)
 
