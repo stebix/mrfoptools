@@ -3,13 +3,13 @@ Tooling for cost value and gradient computation and casting.
 
 @author: Jannik Stebani 2025
 """
+import typing
 from collections.abc import Callable, Mapping
-from typing import NamedTuple
 import jax
 import numpy as np
 
 
-class CostGradTuple(NamedTuple):
+class CostGradTuple(typing.NamedTuple):
     """
     Container for cost value and gradient vector.
     Typically received from `jax.value_and_grad` or similar.
@@ -19,13 +19,33 @@ class CostGradTuple(NamedTuple):
     gradnorm: jax.Array | None = None
 
 
-class NumpyCostGradTuple(NamedTuple):
+class NumpyCostGradTuple(typing.NamedTuple):
     """
     Container for cost value and gradient vector as numpy ndarray.
     """
     cost: np.ndarray | float
     grad: np.ndarray
     gradnorm: np.ndarray | float | None = None
+
+
+class CostContainer(typing.Protocol):
+    """
+    Container protocol to annotate objects (e.g. dataclass or namedtuple)
+    that minimally carry a scalar cost value.
+    """
+    cost: float
+
+
+class GradientContainer(typing.Protocol):
+    """
+    Container protocol to annotate objects (e.g. dataclass or namedtuple)
+    that minimally carry a gradient vector value.
+
+    The gradient attribute is expected to be an array-like object
+    that implements the numpy array interface.
+    """
+    grad: jax.Array | np.ndarray
+    gradnorm: jax.Array | np.ndarray | float | None
 
 
 def cast_cg_tuple_to_numpy(
