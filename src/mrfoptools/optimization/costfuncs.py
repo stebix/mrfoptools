@@ -86,11 +86,11 @@ def create(spec: Sequence[dict[str, float | str]]) -> Array:
 
 
 def bathtub_loss(
-        x: Array,
-        radius: float = 1.0,
-        alpha: float = 0.1,
-        beta: float = 0.5,
-        gamma: float = 5.0
+    x: Array,
+    radius: float = 1.0,
+    alpha: float = 0.1,
+    beta: float = 0.5,
+    gamma: float = 5.0
     ) -> Array:
     """
     Specialized bathtub loss function with flat valley and smooth transition
