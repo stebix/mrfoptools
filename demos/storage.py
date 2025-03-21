@@ -7,7 +7,8 @@ import rich
 import rich.console
 
 
-from mrfoptools.io.bag import store_datalike, store_metadatalike
+from mrfoptools.io.zarrinterface import store_metadatalike
+from mrfoptools.io.zarrinterface import store_datalike
 
 
 def test_store_datalike(tmp_path):
