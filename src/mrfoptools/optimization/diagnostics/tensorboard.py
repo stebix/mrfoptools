@@ -1,6 +1,5 @@
 from collections.abc import Mapping, Callable
 from numbers import Number
-from typing import Protocol
 
 import attrs
 import jax
