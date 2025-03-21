@@ -11,11 +11,11 @@ import jax.numpy as jnp
 from collections.abc import Mapping
 
 
-from mrfoptools.optimization.costgrad import NumpyCostGradTuple
+from mrfoptools.optimization.costgrad import GradientContainer
 
 
 def compute_gradient_cosine_similarities(
-    cost_grad_mapping: Mapping[str, NumpyCostGradTuple]
+    grad_mapping: Mapping[str, GradientContainer]
 ) -> dict[str, float]:
     """
     Compute gradient cosine similiarity of all unique pairs of gradients.
@@ -33,10 +33,10 @@ def compute_gradient_cosine_similarities(
         Mapping from criterion string name to cosine similarity.
     """
     cosine_similiarities: dict[str, float] = {}
-    assert len(cost_grad_mapping) >= 2, f'requiring >= 2 gradients but got {len(cost_grad_mapping)}'
-    for (name_a, name_b) in itertools.combinations(cost_grad_mapping.keys(), r=2):
-        cg_tpl_a = cost_grad_mapping[name_a]
-        cg_tpl_b = cost_grad_mapping[name_b]
+    assert len(grad_mapping) >= 2, f'requiring >= 2 gradients but got {len(grad_mapping)}'
+    for (name_a, name_b) in itertools.combinations(grad_mapping.keys(), r=2):
+        cg_tpl_a = grad_mapping[name_a]
+        cg_tpl_b = grad_mapping[name_b]
         cossim = np.dot(cg_tpl_a.grad, cg_tpl_b.grad) / (cg_tpl_a.gradnorm * cg_tpl_b.gradnorm)
         joint_name: str = '-'.join((name_a, name_b))
         cosine_similiarities[joint_name] = cossim
@@ -45,7 +45,7 @@ def compute_gradient_cosine_similarities(
 
 
 def compute_gradient_magnitude_similarities(
-    cost_grad_mapping: Mapping[str, NumpyCostGradTuple]
+    grad_container: Mapping[str, GradientContainer]
 ) -> dict[str, float]:
     """
     Compute gradient magnitude similiarity of all unique pairs of gradients.
@@ -63,10 +63,10 @@ def compute_gradient_magnitude_similarities(
         Mapping from criterion string name to magnitude similarity.
     """
     magnitude_similarities: dict[str, float] = {}
-    assert len(cost_grad_mapping) >= 2, f'requiring >= 2 gradients but got {len(cost_grad_mapping)}'
-    for (name_a, name_b) in itertools.combinations(cost_grad_mapping.keys(), r=2):
-        cg_tpl_a = cost_grad_mapping[name_a]
-        cg_tpl_b = cost_grad_mapping[name_b]
+    assert len(grad_container) >= 2, f'requiring >= 2 gradients but got {len(grad_container)}'
+    for (name_a, name_b) in itertools.combinations(grad_container.keys(), r=2):
+        cg_tpl_a = grad_container[name_a]
+        cg_tpl_b = grad_container[name_b]
         magnitude_sim = 2 * cg_tpl_a.gradnorm * cg_tpl_b.gradnorm / (cg_tpl_a.gradnorm ** 2 + cg_tpl_b.gradnorm ** 2)
         joint_name: str = '-'.join((name_a, name_b))
         magnitude_similarities[joint_name] = magnitude_sim
