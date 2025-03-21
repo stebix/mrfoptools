@@ -151,3 +151,44 @@ def load_group(
     }
     subdata = {key : load_group(group[key]) for key in keys.subgroup_keys}
     return data | subdata
+
+
+
+def store_optimization_bag(
+    bag: OptimizationBag,
+    path: PathLike,
+    overwrite: bool = False
+) -> None:
+    """
+    Store an `OptimizationBag` object to a Zarr store."
+    """
+    if not isinstance(path, Path):
+        path = Path(path)
+
+    if path.exists() and not overwrite:
+        raise FileExistsError(f'File already exists at \'{path}\'')
+
+    store = zarr.storage.LocalStore(path)
+    root = zarr.group(store=store, overwrite=overwrite)
+
+    # Store the protocol
+    protocol_group = root.create_group('protocol', overwrite=overwrite)
+    store_metadatalike(protocol_group, bag.protocol)
+    # Store the hyperparameters
+    hyperparameters_group = root.create_group('hyperparameters', overwrite=overwrite)
+    store_metadatalike(hyperparameters_group, bag.hyperparameters)
+    # Store the histories
+    histories_group = root.create_group('histories', overwrite=overwrite)
+    store_datalike(histories_group, bag.histories)
+    # Store the initializations
+    initializations_group = root.create_group('initializations', overwrite=overwrite)
+    store_datalike(initializations_group, bag.initializations)
+    # Store the results
+    results_group = root.create_group('results', overwrite=overwrite)
+    store_datalike(results_group, bag.results)
+    # Store the metadata
+    metadata_group = root.create_group('metadata', overwrite=overwrite)
+    store_metadatalike(metadata_group, bag.metadata)
+
+    logger.info(f'Successfully stored OptimizationBag to \'{path}\'')
+    return None
