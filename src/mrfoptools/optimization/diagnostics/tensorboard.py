@@ -10,7 +10,7 @@ import numpy as np
 import mrfoptools.optimization.diagnostics.diagnostics as diag
 import mrfoptools.optimization.gradtools.gradtools as gradtools
 
-from mrfoptools.optimization.costgrad import NumpyCostGradTuple, CostContainer, GradientContainer
+from mrfoptools.optimization.costgrad import CostContainer, GradientContainer
 
 from mrfoptools.optimization.diagnostics.plothelpers import Plotter
 
@@ -37,7 +37,7 @@ class _DiagnosticLogger:
 
     def log_cosine_similarities(
         self,
-        cost_grad_mapping: Mapping[str, NumpyCostGradTuple],
+        grad_mapping: Mapping[str, GradientContainer],
         iteration: int
     ) -> None:
         """Log the cosine similarities between the gradients of the cost functions."""
@@ -45,7 +45,7 @@ class _DiagnosticLogger:
     
     def log_gradient_magnitude_similarities(
         self,
-        cost_grad_mapping: Mapping[str, NumpyCostGradTuple],
+        grad_mapping: Mapping[str, GradientContainer],
         iteration: int
     ) -> None:
         """Log the gradient magnitude similarities between the gradients of the cost functions."""
