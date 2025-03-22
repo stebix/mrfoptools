@@ -67,8 +67,8 @@ def run_experiment(logdir_suffix: str):
     TI = 20
     step_size = 0.01
     inversion_efficiency = 1.0
-    max_states = 1000
-    max_iterations = 500
+    max_states = 600
+    max_iterations = 50
 
     min_fa = np.deg2rad(1)
     max_fa = np.deg2rad(90)
@@ -304,9 +304,9 @@ def run_experiment(logdir_suffix: str):
 
 
     hist_data_np = {
-        'fa_history': np.asarray(fa_history),
-        'cg_history': np.asarray(cost_history),
-        'sig_history': np.asarray(sig_history).astype(np.float32),
+        'fa_history': np.array(fa_history),
+        'cg_history': costgrad.combine_cost_grad_mappings(cost_history),
+        'sig_history': np.array(sig_history),
     }
 
     bag = OptimizationBag(
@@ -317,7 +317,7 @@ def run_experiment(logdir_suffix: str):
         results={},
         metadata=metadata
     )
-    # store_optimization_bag(bag, logdir / 'optbag.zarr')
+    store_optimization_bag(bag, logdir / 'optbag.zarr')
 
 
 def make_parser():
