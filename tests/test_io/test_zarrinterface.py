@@ -14,7 +14,7 @@ def test_store_and_load_metadata_mapping(tmp_path, metadata):
     root = zarr.create_group(store=store, overwrite=False, path='test-metadata')
     zarrinterface.store(root, metadata)
 
-    loaded_metadata = zarrinterface.load_group(root)
+    loaded_metadata = zarrinterface.load(root)
     assert metadata == loaded_metadata
 
 
