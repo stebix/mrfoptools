@@ -4,7 +4,10 @@ Tooling for cost value and gradient computation and casting.
 @author: Jannik Stebani 2025
 """
 import typing
-from collections.abc import Callable, Mapping
+
+from collections import defaultdict
+from collections.abc import Callable, Mapping, Sequence
+
 import jax
 import numpy as np
 
@@ -95,3 +98,36 @@ def cast_to_numpy(
     Usage example: Cast gradient and cost values prior to logging with tensorboard.
     """
     return {k : cast_cg_tuple_to_numpy(v, compute_gradnorm) for k, v in cost_grad_mapping.items()}
+
+
+def recast_values_to_numpy(
+    mapping: Mapping
+) -> dict:
+    """
+    Cast all array-like values in a mapping to numpy arrays.
+    Automatically handles nested mappings.
+    """
+    recast_mapping = {}
+    for k, v in mapping.items():
+        if isinstance(v, Mapping):
+            recast_mapping[k] = recast_values_to_numpy(v)
+        elif isinstance(v, (list, tuple, jax.Array)):
+            recast_mapping[k] = np.asarray(v)
+    return recast_mapping
+
+
+def combine_cost_grad_mappings(
+    mappings: Sequence[Mapping[str, NumpyCostGradTuple]]
+) -> dict[str, dict[str, np.ndarray]]:
+    """
+    Combine a sequence of cost-and-gradient mappings into a mapping
+    that has separate mappings for costs and gradients.
+    The separate mappings relate from criterion name to an array of cost or gradient values.
+    """
+    combined = {'costs': defaultdict(list), 'grads': defaultdict(list)}
+    for mapping in mappings:
+        for costname, cg_tuple in mapping.items():
+            combined['costs'][costname].append(cg_tuple.cost)
+            combined['grads'][costname].append(cg_tuple.grad)
+
+    return recast_values_to_numpy(combined)
