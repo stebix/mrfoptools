@@ -82,6 +82,7 @@ def datamappings_are_equal(
     """
     Compare two data mappings for equality.
     """
+    arry_like_types = (np.ndarray, jax.Array)
     if mapping_a.keys() != mapping_b.keys():
         return False
 
@@ -92,8 +93,10 @@ def datamappings_are_equal(
         if isinstance(value_a, Mapping):
             if not datamappings_are_equal(value_a, value_b):
                 return False
-        else:
+        elif isinstance(value_a, arry_like_types):
             if not np.allclose(value_a, value_b):
                 return False
+        else:
+            return value_a == value_b
 
     return True
