@@ -175,7 +175,7 @@ class TensorboardLogger:
         grad_mapping: Mapping[str, GradientContainer],
         iteration: int
     ) -> None:
-        diag.log_costs(grad_mapping, self.writer, iteration)
+        diag.log_gradient_histograms(grad_mapping, self.writer, iteration)
 
     def log_costs(
         self,
@@ -215,6 +215,8 @@ class TensorboardLogger:
         self,
         flipangles: ArrayLike,
         iteration: int,
+        *,
+        close: bool = True
     ) -> None:
         """
         Log current state of flip angle train to tensorboard as matplotlib figure.
@@ -222,12 +224,14 @@ class TensorboardLogger:
         tag: str = 'plots/fa-trajectory'
         flipangles = self.process_fa(flipangles)
         fig, ax = self.fa_plotter.generate(flipangles)
-        self.writer.add_figure(tag=tag, figure=fig, global_step=iteration)
+        self.writer.add_figure(tag=tag, figure=fig, global_step=iteration, close=close)
 
     def log_signals(
         self,
         signals: ArrayLike,
         iteration: int,
+        *,
+        close: bool = True
     ) -> None:
         """
         Log current signals produced by the sequence to tensorboard as matplotlib figure.
@@ -235,4 +239,4 @@ class TensorboardLogger:
         tag: str = 'plots/signals'
         signals = self.process_signals(signals)
         fig, ax = self.signal_plotter.generate(signals)
-        self.writer.add_figure(tag=tag, figure=fig, global_step=iteration)
+        self.writer.add_figure(tag=tag, figure=fig, global_step=iteration, close=close)
