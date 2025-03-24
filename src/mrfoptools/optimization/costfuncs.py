@@ -45,6 +45,10 @@ def mean_signal_criterion(signals: Array) -> Array:
     return -jnp.mean(jnp.abs(signals))
 
 
+def inverse_mean_signal_criterion(signals: Array) -> Array:
+    return 1 / jnp.mean(jnp.abs(signals))
+
+
 def fa_total_variation_criterion(fa: Array) -> Array:
     """
     Cost function evaluating the total variation of the flip angles.
