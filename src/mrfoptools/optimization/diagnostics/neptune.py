@@ -73,6 +73,15 @@ class NeptuneLogger:
                 grad_container.grad.ravel().mean(), step=iteration
             )
 
+    def log_gradient(
+        self,
+        gradient: ArrayLike,
+        name: str,
+        iteration: int
+    ) -> None:
+        """Log a single gradient vector."""
+        self.run[f'grads/{name}'].append(gradient.ravel().mean(), step=iteration)
+
     
     def log_cosine_similarities(
         self,
@@ -97,8 +106,10 @@ class NeptuneLogger:
         relative_gains: Mapping[str, float],
         iteration: int
     ) -> None:
+        prefix: str = 'relative_gain'
         for name, value in relative_gains.items():
-            self.run[f'relative_gains/{name}'].append(value, step=iteration)
+            tag = '/'.join((prefix, name))
+            self.run[tag].append(value, step=iteration)
 
     
     def log_flipangles(
