@@ -242,7 +242,7 @@ def project_weights(
     U: np.ndarray = to_float64_array(U)
 
     W = np.apply_along_axis(
-        lambda u: project_weight_vector(u, G, solver),
+        lambda u: project_weight_vector(u, G, solver=solver),
         axis=-1, arr=U
     )
     return W
@@ -257,10 +257,15 @@ def unconflicting_projection_gradients(
     *,
     solver: Literal['quadprog'] = 'quadprog'
 ) -> Array:
-    
+    """
+    Note: This function internally uses numpy due to the `qpsolvers` dependency.
+    """
+    jacobian = to_float64_array(jacobian)
     n_gradients: int = jacobian.shape[0]
-    weight = preference_vector or jnp.full(n_gradients, 1/n_gradients, dtype=jnp.float32)
-    U = jnp.diag(weight @ jacobian)
-    G = gramutils.compute_normalized_regularized_gramian(jacobian, norm_eps, reg_eps)
-    W = project_weights(U, G, solver)
-    return jnp.sum(W, axis=0)
+    weight = preference_vector or np.full(shape=[n_gradients], fill_value=1/n_gradients, dtype=np.float32)
+    U = np.diag(weight @ jacobian)
+    G = np.asarray(
+        gramutils.compute_normalized_regularized_gramian(jacobian, norm_eps, reg_eps)
+    )
+    W = project_weights(U, G, solver=solver)
+    return np.sum(W, axis=0)
