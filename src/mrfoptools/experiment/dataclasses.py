@@ -17,6 +17,12 @@ Array: TypeAlias = jax.Array | np.ndarray
 
 @attrs.define
 class Protocol:
+    """
+    Core protocol parameters for the MR Fingerprinting optimization
+    experiment.
+    The species are generated from the flat combinations of the
+    T1 and T2 candidates.
+    """
     M0: float
     T1: Sequence[Number] | Array
     T2: Sequence[Number] | Array
@@ -28,6 +34,7 @@ class Protocol:
     NR: int
 
 
+
 @attrs.define
 class Initialization:
     fa: Array
@@ -36,8 +43,17 @@ class Initialization:
 
 
 @attrs.define
+class BathtubLossParameters:
+    radius: float
+    alpha: float
+    beta: float
+    gamma: float
+
+
+@attrs.define
 class Hyperparameter:
     step_size: float
     max_iterations: int
     min_fa: float
     max_fa: float
+    bathtub_loss_parameters: BathtubLossParameters
