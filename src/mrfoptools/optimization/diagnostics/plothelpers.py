@@ -86,19 +86,38 @@ class Plotter:
 
     def generate(
         self,
-        data: ArrayLike
+        data: ArrayLike,
+        **kwargs
     ) -> tuple[Figure, Axes]:
         """
         Generate a plot with the given data.
         Data should be a 1D or 2D array.
+
+        Parameters
+        ----------
+        data : ArrayLike
+            Data to plot.
+
+        **kwargs
+            Additional keyword arguments can be used to override
+            settings deduced from the instance attributes during
+            the call of the `configure` method.
         """
         fig, ax = plt.subplots(figsize=self.figsize, dpi=self.dpi)
         if self.baseline_data is not None:
             self.plot(ax, self.baseline_data, self.baseline_data_plot_kwargs)
         self.plot(ax, data, self.data_plot_kwargs)
-        self.configure(
-            ax, self.title, self.xlabel, self.ylabel,
-            self.legend, self.grid, self.ylim, self.xlim)
+        instance_kwargs = {
+            'title' : self.title,
+            'xlabel' : self.xlabel,
+            'ylabel' : self.ylabel,
+            'legend' : self.legend,
+            'grid' : self.grid,
+            'ylim' : self.ylim,
+            'xlim' : self.xlim
+        }
+        kwargs = instance_kwargs | kwargs
+        self.configure(ax, **kwargs)
         return (fig, ax)
 
 
