@@ -36,7 +36,7 @@ class Protocol:
 
 
 @attrs.define
-class Initialization:
+class Initializations:
     fa: Array
     tr: Array
     seed: int
