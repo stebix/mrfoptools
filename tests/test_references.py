@@ -1,7 +1,5 @@
 import numpy as np
 
-import pytest
-
 import mrfoptools.optimization.diagnostics.references as refcs
 
 class Test_compute_reference_costs:

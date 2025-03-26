@@ -3,8 +3,10 @@ Tooling to perform gradient-based optimization on MRF sequences.
 
 @Author: Jannik Stebani 2025
 """
+# ruff: noqa: F821
 # ruff: noqa: F841
 # ruff: noqa: F401
+
 
 import argparse
 import time
@@ -596,7 +598,7 @@ def run_experiment(logdir_suffix: str):
                 'M0': M0,
                 'NR': NR,
             }
-            
+
             run['parameters/protocol'] = neptune.utils.stringify_unsupported(
                 protocol
             )
