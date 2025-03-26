@@ -8,6 +8,7 @@ Tooling to perform gradient-based optimization on MRF sequences.
 
 import argparse
 import time
+import enum
 import numpy as np
 import jax.numpy as jnp
 import jax
@@ -19,38 +20,38 @@ import pickle
 import datetime
 import zoneinfo
 import logging
+import attrs
 
 from pathlib import Path
 from uuid import uuid4
 from collections.abc import Sequence, Mapping
 
-from torch.utils.tensorboard import SummaryWriter
+import neptune.utils
 
 import mrfoptools.optimization.blocks as optblocks
 import mrfoptools.initialization.initialization as initools
 import mrfoptools.optimization.costfuncs as costfuncs
 import mrfoptools.epg.sequences.jax.fisp as epgfisp
 import mrfoptools.optimization.costgrad as costgrad
-import mrfoptools.optimization.diagnostics.diagnostics as diags
 import mrfoptools.optimization.gradtools.gradtools as gradtools
 import mrfoptools.optimization.diagnostics.tensorboard as tbdiag
 import mrfoptools.optimization.gradtools.jacdesc as jacdesc 
+import mrfoptools.optimization.diagnostics.references as refcs
 
 from mrfoptools.optimization.costgrad import cost_grad_builder
-from mrfoptools.optimization.diagnostics.plothelpers import Plotter, CachingPlotter
-from mrfoptools.optimization.diagnostics.tensorboard import RelativeGainEvaluator, BaseCost, TensorboardLogger
-from mrfoptools.optimization.diagnostics.diagnostics import CostValueRange
+from mrfoptools.optimization.diagnostics.plothelpers import CachingPlotter
+from mrfoptools.optimization.diagnostics.references import CostValueRange
 from mrfoptools.io.bag import OptimizationBag, store_optimization_bag
 from mrfoptools.optimization.diagnostics.neptune import NeptuneLogger, create_run
 from mrfoptools.namegen import generate_name
 
-from mrfoptools.experiment.dataclasses import Protocol, Initialization, Hyperparameter
+
+from mrfoptools.experiment.dataclasses import (Protocol, Initializations,
+                                               Hyperparameter, BathtubLossParameters)
 
 DEFAULT_LOGGER_NAME: str = '.'.join(('main', __name__))
 logger = logging.getLogger(DEFAULT_LOGGER_NAME)
 
-def main():
-    pass
 
 
 def create_relaxometric_combinations(
@@ -64,6 +65,11 @@ def create_relaxometric_combinations(
     T2 = jnp.array(T2)
     T1, T2 = jnp.meshgrid(T1, T2)
     return T1.flatten(), T2.flatten()
+
+
+class SaveFormat(enum.Enum):
+    PICKLE = 'pickle'
+    ZARR = 'zarr'
 
 
 def store_pickle(
@@ -86,15 +92,10 @@ class RunInfo:
     base_name: str
     run_dir: Path
     tags: Sequence[str]
+    seed: int
     subrun_index: int | None = None
     sweep_ID: str | None = None
 
-
-import enum
-
-class SaveFormat(enum.Enum):
-    PICKLE = 'pickle'
-    ZARR = 'zarr'
 
 
 def construct_run_name(
@@ -112,11 +113,65 @@ def construct_run_name(
     return f'{base_name}-subrun-{subrun_index}'
 
 
+def main():
+
+    expdir = Path('/home/jannik/storage/mrf-optruns-march-exp/v2-test-1')
+    expdir.mkdir()
+
+    runinfo = RunInfo(
+        base_name='fsig-hpo-test',
+        run_dir=expdir,
+        tags=['test-deleteme'],
+        seed=1337
+    )
+    T1, T2 = create_relaxometric_combinations(
+        T1=jnp.array([2250, 2500, 2750, 3000]),
+        T2=np.linspace(500, 1250, num=3)
+    )
+
+    protocol = Protocol(
+        M0=1.0,
+        T1=T1,
+        T2=T2,
+        TE=2.2,
+        TI=20,
+        phase=0,
+        inversion_efficiency=1.0,
+        max_states=600,
+        NR=1000
+    )
+    initializations = Initializations(
+        fa=jnp.deg2rad(jnp.full(fill_value=49, shape=protocol.NR)),
+        tr=jnp.full(fill_value=12, shape=protocol.NR),
+        seed=1337
+    )
+    hyperparameters = Hyperparameter(
+        step_size=0.005,
+        max_iterations=50,
+        min_fa=np.deg2rad(1),
+        max_fa=np.deg2rad(90),
+        bathtub_loss_parameters=BathtubLossParameters(
+            radius=2.0,
+            alpha=0.1,
+            beta=0.5,
+            gamma=10
+        )
+    )
+    run_experiment_v2(
+        run_info=runinfo,
+        protocol=protocol,
+        initializations=initializations,
+        hyperparameters=hyperparameters,
+        save_format=SaveFormat.ZARR
+    )
+    print('checkling out sir o7')
+
+
 
 def run_experiment_v2(
         run_info: RunInfo,
         protocol: Protocol,
-        initialization: Initialization,
+        initializations: Initializations,
         hyperparameters: Hyperparameter,
         save_format: SaveFormat | Sequence[SaveFormat] = SaveFormat.ZARR
     ):
@@ -170,7 +225,6 @@ def run_experiment_v2(
     assert len(T1) == len(T2), 'T1 and T2 value count mismatch'
     n_species = T1.shape[0]
 
-
     const_tr = 12
     const_fa_init = 49
     const_phase = 0
@@ -179,12 +233,10 @@ def run_experiment_v2(
     min_fa = np.deg2rad(hyperparameters.min_fa)
     max_fa = np.deg2rad(hyperparameters.max_fa)
 
-
     # Add random noise in units degrees (small perturbation)
     fa_pattern_np = initools.create_constant_pattern(amplitude=const_fa_init, length=NR)
     tr_pattern = jnp.array(initools.create_constant_pattern(amplitude=const_tr, length=NR))
     phases = jnp.array(initools.create_constant_pattern(amplitude=const_phase, length=NR))
-
 
     forward_fatr = epgfisp.specialize_simulate_fisp(
         T1=T1, T2=T2, M0=M0, phases=phases, TE=TE, TI=TI,
@@ -195,7 +247,7 @@ def run_experiment_v2(
         TR=tr_pattern, M0=M0, phases=phases, TE=TE, TI=TI, inversion_efficiency=inversion_efficiency, max_states=max_states
     )
 
-    seed = 1337
+    seed = run_info.seed
     key = jax.random.key(seed)
     initial_fa = jnp.deg2rad(
         jnp.array(fa_pattern_np) + jax.random.normal(key=key, shape=fa_pattern_np.shape)
@@ -244,40 +296,17 @@ def run_experiment_v2(
 
     initial_fa = initial_fa
 
-    protocol = {
-        'T1': T1.tolist(),
-        'T2': T2.tolist(),
-        'TE': TE,
-        'TI': TI,
-        'phase': const_phase,
-        'inversion_efficiency': inversion_efficiency,
-        'max_states': max_states,
-        'M0': M0,
-        'NR': NR,
-    }
-
-    import neptune.utils
 
     run['parameters/protocol'] = neptune.utils.stringify_unsupported(
-        protocol
+        attrs.asdict(protocol)
     )
 
-    initializations = {
-        'fa': np.asarray(initial_fa),
-        'tr': np.asarray(tr_pattern),
-        'seed': 1337
-    }
-    hyperparameters = {
-        'step_size': step_size,
-        'max_iterations': max_iterations,
-        'min_fa': float(min_fa),
-        'max_fa': float(max_fa)
-    }
+
     metadata = {
         'timestamp' : (datetime.
-                        datetime.
-                        now(tz=zoneinfo.ZoneInfo('Europe/Berlin')).
-                        isoformat()),
+                       datetime.
+                       now(tz=zoneinfo.ZoneInfo('Europe/Berlin')).
+                       isoformat()),
         'git_hash' : 'pseudo-git-hash :)',
     }
 
@@ -290,13 +319,13 @@ def run_experiment_v2(
     signal_plotter = CachingPlotter.create_signal_plotter()
 
 
+    run['initializations/fa'].upload(np.array(initial_fa))
+    run['initializations/tr'].upload(np.array(tr_pattern))
+    run['initializations/seed'] = seed
+
     fa = initial_fa.copy()
 
-    n_species = yun_init_signals.shape[0]
-    print(f'n_species :: {n_species}')
-
-    #optimizer = optax.adam(learning_rate=step_size)
-    optimizer = optax.sgd(learning_rate=step_size)
+    optimizer = optax.sgd(learning_rate=hyperparameters.step_size)
     optimizer_state = optimizer.init(fa)
 
     forward_jit = jax.jit(forward)
@@ -304,23 +333,20 @@ def run_experiment_v2(
 
     const_fa_init = jnp.array(initools.create_constant_pattern(amplitude=np.deg2rad(49), length=NR))
 
-    # yun base costs
-    yun_base_signals = forward_jit(T1, T2, yun_fa_manual)
-    yun_base_signal_cost = costfuncs.inverse_mean_signal_criterion(yun_base_signals)
-    yun_base_ortho_cost = costfuncs.orthogonality_criterion(yun_base_signals)
 
-    # constinit base costs
-    constinit_base_signals = forward_jit(T1, T2, const_fa_init)
-    constinit_base_signal_cost = costfuncs.inverse_mean_signal_criterion(constinit_base_signals)
-    constinit_base_ortho_cost = costfuncs.orthogonality_criterion(constinit_base_signals)
 
-    base_costs  = [
-        BaseCost(costname='signal', refname='yun-base', value=yun_base_signal_cost, range=CostValueRange.POSITIVE),
-        BaseCost(costname='orthogonality', refname='yun-base', value=yun_base_ortho_cost, range=CostValueRange.POSITIVE),
-        BaseCost(costname='signal', refname='constfa-base', value=constinit_base_signal_cost, range=CostValueRange.POSITIVE),
-        BaseCost(costname='orthogonality', refname='constfa-base', value=constinit_base_ortho_cost, range=CostValueRange.POSITIVE),
-    ]
-    relative_gain_evaluator = RelativeGainEvaluator(*base_costs, prefix='')
+    reference_costfuncs = {
+        'signal': costfuncs.inverse_mean_signal_criterion,
+        'orthogonality': costfuncs.orthogonality_criterion,
+    }
+    reference_specs = {
+        'yun-base': (T1, T2, yun_fa_manual),
+        'constfa-base': (T1, T2, const_fa_init),
+    }
+    reference_costs = refcs.ReferenceCost.from_mapping(
+        refcs.compute_reference_costs(forward_jit, reference_costfuncs, reference_specs)
+    )
+    relative_gain_evaluator = refcs.RelativeGainEvaluator(*reference_costs, prefix='')
 
     neplogger = NeptuneLogger(
         run=run,
@@ -349,13 +375,12 @@ def run_experiment_v2(
         cossim = gradtools.compute_gradient_cosine_similarities(cost_grad_mapping_numpy)
         magsim = gradtools.compute_gradient_magnitude_similarities(cost_grad_mapping_numpy)
         relgains = relative_gain_evaluator(cost_grad_mapping_numpy)
+        signals = np.asarray(forward_jit(T1, T2, fa))
+        sig_history.append(signals)
 
         neplogger.log_relative_gains(relgains, iteration)
         neplogger.log_cosine_similarities(cossim, iteration)
         neplogger.log_magnitude_similarities(magsim, iteration)
-
-        signals = np.asarray(forward_jit(T1, T2, fa))
-        sig_history.append(signals)
         neplogger.log_flipangles(fa, iteration, close=True)
         neplogger.log_signals(signals, iteration, close=True)
 
@@ -381,7 +406,6 @@ def run_experiment_v2(
 
 
     save_formats = save_format if isinstance(save_format, Sequence) else [save_format]
-
     # save stuff
     history_data = {
         'fa_history': np.array(fa_history),
@@ -389,12 +413,14 @@ def run_experiment_v2(
         'sig_history': np.array(sig_history),
     }
     
-    fname_pkl = f'{run_na}.pkl'
+    fname_pkl = f'{run_name}.pkl'
     fname_zarr = f'{run_info.base_name}.zarr'
 
     for save_format in save_formats:
+
         if save_format == SaveFormat.PICKLE:
             store_pickle(history_data, run_info.run_dir / fname_pkl)
+
         elif save_format == SaveFormat.ZARR:
             bag = OptimizationBag(
                 protocol=protocol,
@@ -570,9 +596,7 @@ def run_experiment(logdir_suffix: str):
                 'M0': M0,
                 'NR': NR,
             }
-
-            import neptune.utils
-
+            
             run['parameters/protocol'] = neptune.utils.stringify_unsupported(
                 protocol
             )
@@ -632,10 +656,10 @@ def run_experiment(logdir_suffix: str):
             constinit_base_totvar_cost = costfuncs.fa_total_variation_criterion(const_fa_init)
 
             base_costs  = [
-                BaseCost(costname='signal', refname='yun-base', value=yun_base_signal_cost, range=CostValueRange.POSITIVE),
-                BaseCost(costname='orthogonality', refname='yun-base', value=yun_base_ortho_cost, range=CostValueRange.POSITIVE),
-                BaseCost(costname='signal', refname='constfa-base', value=constinit_base_signal_cost, range=CostValueRange.POSITIVE),
-                BaseCost(costname='orthogonality', refname='constfa-base', value=constinit_base_ortho_cost, range=CostValueRange.POSITIVE),
+                ReferenceCost(costname='signal', refname='yun-base', value=yun_base_signal_cost, range=CostValueRange.POSITIVE),
+                ReferenceCost(costname='orthogonality', refname='yun-base', value=yun_base_ortho_cost, range=CostValueRange.POSITIVE),
+                ReferenceCost(costname='signal', refname='constfa-base', value=constinit_base_signal_cost, range=CostValueRange.POSITIVE),
+                ReferenceCost(costname='orthogonality', refname='constfa-base', value=constinit_base_ortho_cost, range=CostValueRange.POSITIVE),
                 #BaseCost(costname='totvar', refname='yun-base', value=yun_base_totvar_cost, range=CostValueRange.POSITIVE),
                 #BaseCost(costname='totvar', refname='constfa-base', value=constinit_base_totvar_cost, range=CostValueRange.POSITIVE)
             ]
@@ -756,7 +780,10 @@ def make_parser():
     return parser
 
 if __name__ == '__main__':
-    parser = make_parser()
-    args = parser.parse_args()
-    run_experiment(logdir_suffix=args.logdir_suffix)
+    main()
+    
+    
+    #parser = make_parser()
+    #args = parser.parse_args()
+    #run_experiment(logdir_suffix=args.logdir_suffix)
 
