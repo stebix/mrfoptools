@@ -41,7 +41,8 @@ dependencies = [
   "optax",
   "zarr >= 3.0",
   "numba",
-  "attrs"
+  "attrs",
+  "qpsolvers"
 ]
 
 [project.urls]
