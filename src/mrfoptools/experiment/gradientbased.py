@@ -18,57 +18,51 @@ import itertools
 import pickle
 import datetime
 import zoneinfo
-from numbers import Number
-from functools import partial
 
 from pathlib import Path
+from uuid import uuid4
+
 from torch.utils.tensorboard import SummaryWriter
-import neptune
 
 import mrfoptools.optimization.blocks as optblocks
 import mrfoptools.initialization.initialization as initools
 import mrfoptools.optimization.costfuncs as costfuncs
-import mrfoptools.io.io as io
 import mrfoptools.epg.sequences.jax.fisp as epgfisp
-import mrfoptools.initialization.initialization as init
 import mrfoptools.optimization.costgrad as costgrad
-
-from mrfoptools.optimization.costgrad import cost_grad_builder
 import mrfoptools.optimization.diagnostics.diagnostics as diags
 import mrfoptools.optimization.gradtools.gradtools as gradtools
-
 import mrfoptools.optimization.diagnostics.tensorboard as tbdiag
+import mrfoptools.optimization.gradtools.jacdesc as jacdesc 
 
+from mrfoptools.optimization.costgrad import cost_grad_builder
 from mrfoptools.optimization.diagnostics.plothelpers import Plotter, CachingPlotter
 from mrfoptools.optimization.diagnostics.tensorboard import RelativeGainEvaluator, BaseCost, TensorboardLogger
 from mrfoptools.optimization.diagnostics.diagnostics import CostValueRange
-
 from mrfoptools.io.bag import OptimizationBag, store_optimization_bag
-
 from mrfoptools.optimization.diagnostics.neptune import NeptuneLogger, create_run
-
-
-
 from mrfoptools.namegen import generate_name
-from uuid import uuid4
+
+
 
 def run_experiment(logdir_suffix: str):
 
     sweep_ID: str = '-'.join((generate_name(), str(uuid4())))
-    sweep_run = create_run(tags=['sweep-level'])
+    sweep_run = create_run(name='fsig-hpo-test', tags=['sweep-level'])
     sweep_run['sys/group_tags'].add(sweep_ID)
 
     
 
-    step_sizes: list[float] = [0.01, 0.001, 0.0001, 0.1]
     radius_values = [1.0, 2.0, 3.0, 4.0, 5.0]
-    step_size = 0.01
+    step_size = 0.0005
+    radius = 2.0
+    step_sizes: list[float] = [0.0005, 0.001, 0.0001]
 
-    fs = np.linspace(1.0, 0.01, num=25)
+    fs = [1.0, 0.5,] # 0.1, 0.05, 0.01, 0.001]
+    f = 1.0
 
-    for i, (radius, f) in enumerate(itertools.product(radius_values, fs)):
+    for i, step_size in enumerate(step_sizes):
 
-        print(f'run {i+1} of {len(radius_values) * len(fs)}')
+        print(f'run {i+1} of {len(step_sizes)}')
 
         with create_run(name=f'subrun-{i}', tags=['trial-level']) as run:
             
@@ -99,7 +93,7 @@ def run_experiment(logdir_suffix: str):
             # step_size = 0.01
             inversion_efficiency = 1.0
             max_states = 600
-            max_iterations = 300
+            max_iterations = 30000
 
             min_fa = np.deg2rad(1)
             max_fa = np.deg2rad(90)
@@ -195,7 +189,7 @@ def run_experiment(logdir_suffix: str):
             key = jax.random.key(seed)
 
 
-            initial_fa = yun_fa_manual
+            initial_fa = initial_fa
 
             protocol = {
                 'T1': T1.tolist(),
@@ -209,7 +203,11 @@ def run_experiment(logdir_suffix: str):
                 'NR': NR,
             }
 
-            run['parameters/protocol'] = protocol
+            import neptune.utils
+
+            run['parameters/protocol'] = neptune.utils.stringify_unsupported(
+                protocol
+            )
 
             initializations = {
                 'fa': np.asarray(initial_fa),
@@ -219,14 +217,14 @@ def run_experiment(logdir_suffix: str):
             hyperparameters = {
                 'step_size': step_size,
                 'max_iterations': max_iterations,
-                'min_fa': min_fa,
-                'max_fa': max_fa
+                'min_fa': float(min_fa),
+                'max_fa': float(max_fa)
             }
             metadata = {
                 'timestamp' : (datetime.
-                            datetime.
-                            now(tz=zoneinfo.ZoneInfo('Europe/Berlin')).
-                            isoformat()),
+                               datetime.
+                               now(tz=zoneinfo.ZoneInfo('Europe/Berlin')).
+                               isoformat()),
                 'git_hash' : 'pseudo-git-hash :)',
             }
 
@@ -244,7 +242,8 @@ def run_experiment(logdir_suffix: str):
             n_species = yun_init_signals.shape[0]
             print(f'n_species :: {n_species}')
 
-            optimizer = optax.adam(learning_rate=step_size)
+            #optimizer = optax.adam(learning_rate=step_size)
+            optimizer = optax.sgd(learning_rate=step_size)
             optimizer_state = optimizer.init(fa)
 
             forward_jit = jax.jit(forward)
@@ -254,25 +253,25 @@ def run_experiment(logdir_suffix: str):
 
             # yun base costs
             yun_base_signals = forward_jit(T1, T2, yun_fa_manual)
-            yun_base_signal_cost = costfuncs.mean_signal_criterion(yun_base_signals)
+            yun_base_signal_cost = costfuncs.inverse_mean_signal_criterion(yun_base_signals)
             yun_base_ortho_cost = costfuncs.orthogonality_criterion(yun_base_signals)
             yun_base_totvar_cost = costfuncs.fa_total_variation_criterion(yun_fa_manual)
 
             # constinit base costs
             constinit_base_signals = forward_jit(T1, T2, const_fa_init)
-            constinit_base_signal_cost = costfuncs.mean_signal_criterion(constinit_base_signals)
+            constinit_base_signal_cost = costfuncs.inverse_mean_signal_criterion(constinit_base_signals)
             constinit_base_ortho_cost = costfuncs.orthogonality_criterion(constinit_base_signals)
             constinit_base_totvar_cost = costfuncs.fa_total_variation_criterion(const_fa_init)
 
             base_costs  = [
-                BaseCost(costname='signal', refname='yun-base', value=yun_base_signal_cost, range=CostValueRange.NEGATIVE),
+                BaseCost(costname='signal', refname='yun-base', value=yun_base_signal_cost, range=CostValueRange.POSITIVE),
                 BaseCost(costname='orthogonality', refname='yun-base', value=yun_base_ortho_cost, range=CostValueRange.POSITIVE),
-                BaseCost(costname='totvar', refname='yun-base', value=yun_base_totvar_cost, range=CostValueRange.POSITIVE),
-                BaseCost(costname='signal', refname='constfa-base', value=constinit_base_signal_cost, range=CostValueRange.NEGATIVE),
+                BaseCost(costname='signal', refname='constfa-base', value=constinit_base_signal_cost, range=CostValueRange.POSITIVE),
                 BaseCost(costname='orthogonality', refname='constfa-base', value=constinit_base_ortho_cost, range=CostValueRange.POSITIVE),
-                BaseCost(costname='totvar', refname='constfa-base', value=constinit_base_totvar_cost, range=CostValueRange.POSITIVE)
+                #BaseCost(costname='totvar', refname='yun-base', value=yun_base_totvar_cost, range=CostValueRange.POSITIVE),
+                #BaseCost(costname='totvar', refname='constfa-base', value=constinit_base_totvar_cost, range=CostValueRange.POSITIVE)
             ]
-            relative_gain_evaluator = RelativeGainEvaluator(*base_costs)
+            relative_gain_evaluator = RelativeGainEvaluator(*base_costs, prefix='')
 
             diaglogger = tbdiag.TensorboardLogger(
                 writer,
@@ -312,6 +311,8 @@ def run_experiment(logdir_suffix: str):
                 # TODO: homogenize this with the tensorboard logger
                 cossim = gradtools.compute_gradient_cosine_similarities(cost_grad_mapping_numpy)
                 magsim = gradtools.compute_gradient_magnitude_similarities(cost_grad_mapping_numpy)
+                relgains = relative_gain_evaluator(cost_grad_mapping_numpy)
+                neplogger.log_relative_gains(relgains, iteration)
                 neplogger.log_cosine_similarities(cossim, iteration)
                 neplogger.log_magnitude_similarities(magsim, iteration)
                 #neplogger.log_relative_gains(cost_grad_mapping_numpy, iteration)
@@ -331,6 +332,16 @@ def run_experiment(logdir_suffix: str):
                             + f_signal * cost_grad_mapping['signal'].grad
                             + f_orthogonality * cost_grad_mapping['orthogonality'].grad)
                 #gradient = cost_grad_mapping['signal'].grad
+
+                jacobian = jnp.stack(
+                    [cost_grad_mapping['smoothness'].grad,
+                     cost_grad_mapping['signal'].grad,
+                     cost_grad_mapping['orthogonality'].grad],
+                    axis=0
+                )
+                gradient = jacdesc.conFIG(jacobian)
+                
+                neplogger.log_gradient(gradient, 'mean-conFIG', iteration)
                 
                 update, optimizer_state = optimizer.update(gradient, optimizer_state, fa)
                 fa = optax.apply_updates(fa, update)
