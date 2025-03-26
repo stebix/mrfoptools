@@ -3,19 +3,13 @@ Tooling for gradient and cost diagnostics: Logging and visualization to tensorbo
 
 @Author: Jannik Stebani 2025
 """
-import enum
 from collections.abc import Mapping, Callable
 import numpy as np
 import jax
 import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 
-from mrfoptools.optimization.costgrad import NumpyCostGradTuple, CostContainer, GradientContainer
-
-
-class CostValueRange(enum.Enum):
-    POSITIVE = 'positive'
-    NEGATIVE = 'negative'
+from mrfoptools.optimization.costgrad import CostContainer, GradientContainer
 
 
 def log_costs(
@@ -72,43 +66,6 @@ def log_gradient_magnitude_similarities(
     for name, value in magnitude_similarities.items():
         tag = '/'.join((prefix, name))
         writer.add_scalar(tag=tag, scalar_value=value, global_step=iteration)
-
-
-def build_relative_gain_logfunction(
-    forward: Callable[[jax.Array, jax.Array, jax.Array], jax.Array],
-    initial_parameters: tuple[jax.Array, jax.Array],
-    criterion: Callable[[jax.Array], jax.Array],
-    writer: SummaryWriter,
-    name: str,
-    prefix: str = 'relative_gain',
-    cost_value_range: CostValueRange | str = CostValueRange.POSITIVE
-) -> Callable:
-    """
-    Programmatically log improvements of a scalar cost value
-    relative to a predefined initial value.
-    """
-    out = forward(*initial_parameters)
-    init_cost = np.asarray(criterion(out))
-    tag = '/'.join((prefix, name))
-
-    # For relative gain, we have to make a case distinction for 
-    # cost functions that generate strictly positive or negative values.
-    cost_value_range = CostValueRange(cost_value_range) if not isinstance(cost_value_range, CostValueRange) else cost_value_range
-    if cost_value_range == CostValueRange.POSITIVE:
-        def _log(cg_tuple: NumpyCostGradTuple, iteration: int):
-            """Log relative gain over initial baseline cost value."""
-            relative_improvement = init_cost / cg_tuple.cost
-            writer.add_scalar(tag=tag, scalar_value=relative_improvement, global_step=iteration)
-    
-    elif cost_value_range == CostValueRange.NEGATIVE:
-        # Due to cancelling of the negative sign, we have to invert the fraction.
-        # A 'larger' cost value (absolute value wise) is actually a 'better' solution.
-        def _log(cg_tuple: NumpyCostGradTuple, iteration: int):
-            """Log relative gain over initial baseline cost value."""
-            relative_improvement = cg_tuple.cost / init_cost
-            writer.add_scalar(tag=tag, scalar_value=relative_improvement, global_step=iteration)
-            
-    return _log
 
 
 def signal_log_builder(
