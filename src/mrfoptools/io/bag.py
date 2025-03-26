@@ -56,6 +56,10 @@ def store_optimization_bag(
     if not isinstance(path, Path):
         path = Path(path)
 
+    if not path.suffix.endswith('.zarr'):
+        path = path.with_suffix('.zarr')
+        logger.warning(f'Added \'.zarr\' suffix to path: \'{path}\'')
+
     if path.exists() and not overwrite:
         raise FileExistsError(f'File already exists at \'{path}\'')
 
