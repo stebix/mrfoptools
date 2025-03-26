@@ -208,7 +208,9 @@ class TensorboardLogger:
         if not self.relative_gain_evaluator:
             return
         relative_gains = self.relative_gain_evaluator(cost_mapping)
-        for tag, value in relative_gains.items():
+        prefix: str = 'relative_gain'
+        for name, value in relative_gains.items():
+            tag = '/'.join((prefix, name))
             self.writer.add_scalar(tag=tag, scalar_value=float(value), global_step=iteration)
 
     def log_flipangles(
