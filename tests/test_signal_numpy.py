@@ -10,7 +10,7 @@ from mrfoptools.initialization.initialization import load_yun_pattern
 
 def init_helper() -> dict:
     """Setup for numpy-backend signal calculations."""
-    pattern = load_yun_pattern(type_='both')
+    pattern = load_yun_pattern(style='canonical', element='both')
     fa = pattern.flip_angles
     tr = pattern.repetition_times
     phases = np.full_like(fa, 0.0)
