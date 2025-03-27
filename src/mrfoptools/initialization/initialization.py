@@ -8,6 +8,8 @@ Yun Pattern:     Yun Jiang et al.   https://doi.org/10.1002/mrm.25559
 
 @author: Jannik Stebani 2025
 """
+import enum
+
 from collections.abc import Sequence
 from numbers import Number
 from typing import Literal, NamedTuple
@@ -22,6 +24,9 @@ CAO_TR_PATTERN_PATH: Path = Path(__file__).parent / 'assets/tr_cao.npy'
 YUN_FA_PATTERN_PATH: Path = Path(__file__).parent / 'assets/fa_yun.npy'
 YUN_TR_PATTERN_PATH: Path = Path(__file__).parent / 'assets/tr_yun.npy'
 
+# Raw Yun pattern amplitudes in degrees: Can be used to create pattern
+# without the zero-parts in between the segments.
+YUN_FA_PATTERN_AMPLITUDES: np.ndarray = np.array([35, 43, 70, 45, 27])
 
 class Pattern(NamedTuple):
     flip_angles: np.ndarray
@@ -72,21 +77,52 @@ def create_constant_pattern(amplitude: Number, length: int) -> np.ndarray:
 
 
 
-def load_yun_pattern(type_: Literal['fa', 'tr', 'both'] = 'fa') -> np.ndarray | Pattern:
+def load_yun_pattern(
+        style: Literal['canonical', 'tight'] = 'canonical',
+        element: Literal['fa', 'tr', 'both'] = 'fa') -> np.ndarray | Pattern:
     """
-    Load the predefined Yun pattern.
-    Flip angle and repetition time patterns are available.
+    Load the predefined Yun pattern (e.g. flip angle and/or repetition times)
+    The FA pattern can be loaded in canonical (small segments where FA = 0 in between)
+    or tight (no zero segments) style.
+
+    Parameters
+    ----------
+    style: Literal['canonical', 'tight']
+        Style of the pattern.
+
+    element: Literal['fa', 'tr', 'both']
+        Element(s) of the pattern to load.
+
+    Returns
+    -------
+    np.ndarray | Pattern
+        Loaded pattern(s).
     """
     dtype: type = np.float32
-    if type_ == 'fa':
-        return np.load(YUN_FA_PATTERN_PATH).astype(dtype)
-    elif type_ == 'tr':
-        return np.load(YUN_TR_PATTERN_PATH).astype(dtype)
+    segment_size: int = 200
 
-    return Pattern(
-        flip_angles=np.load(YUN_FA_PATTERN_PATH).astype(dtype),
-        repetition_times=np.load(YUN_TR_PATTERN_PATH).astype(dtype)
-    )
+    if element == 'fa' and style == 'canonical':
+        return np.load(YUN_FA_PATTERN_PATH).astype(dtype)
+    elif element == 'fa' and style == 'tight':
+        return create_sinusoidal_pattern(
+            YUN_FA_PATTERN_AMPLITUDES, segment_size=segment_size
+        ).astype(dtype)
+    elif element == 'tr':
+        return np.load(YUN_TR_PATTERN_PATH).astype(dtype)
+    elif element == 'both' and style == 'canonical':
+        return Pattern(
+            flip_angles=np.load(YUN_FA_PATTERN_PATH).astype(dtype),
+            repetition_times=np.load(YUN_TR_PATTERN_PATH).astype(dtype)
+        )
+    elif element == 'both' and style == 'tight':
+        return Pattern(
+            flip_angles=create_sinusoidal_pattern(
+                YUN_FA_PATTERN_AMPLITUDES, segment_size=segment_size
+            ).astype(dtype),
+            repetition_times=np.load(YUN_TR_PATTERN_PATH).astype(dtype)
+        )
+    else:
+        raise ValueError('Invalid combination of style and element.')
 
 
 
@@ -104,3 +140,12 @@ def load_cao_pattern(type_: Literal['fa', 'tr', 'both'] = 'fa') -> np.ndarray | 
         flip_angles=np.load(CAO_FA_PATTERN_PATH),
         repetition_times=np.load(CAO_TR_PATTERN_PATH)
     )
+
+
+class InitializationType(enum.Enum):
+    CONSTANT = 'constant'
+    CONSTANT_PERTURBED = 'constant_perturbed'
+    YUN_CANONICAL = 'yun_canonical'
+    YUN_TIGHT = 'yun_tight'
+    ARBITRARY = 'arbitrary'
+
