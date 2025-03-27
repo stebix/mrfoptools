@@ -1,12 +1,14 @@
 import os
 from collections.abc import Mapping, Callable
+from typing import Any
 
 import jax
 import jax.numpy as jnp
-import neptune.types
 import numpy as np
-import neptune
 import matplotlib.pyplot as plt
+import neptune
+import neptune.utils
+import neptune.types
 
 from mrfoptools.optimization.costgrad import CostContainer, GradientContainer
 from mrfoptools.namegen import generate_name
@@ -137,3 +139,30 @@ class NeptuneLogger:
         self.run['plots/signals'].append(fig, step=iteration)
         if close:
             plt.close(fig)
+
+    def log_protocol(
+            self,
+            protocol: Mapping[str, Any]
+        ) -> None:
+        """
+        Log protocol information as static information.
+        """
+        for key, value in protocol.items():
+            self.run[f'protocol/{key}'] =  neptune.utils.stringify_unsupported(value)
+
+
+    def log_initializations(
+        self,
+        initializations: Mapping[str, Any]
+    ) -> None:
+        """
+        Log initializations data as static run-specific information.
+        Numpy and jax arrays are pickled and uploaded as files.
+        """
+        for key, value in initializations.items():
+            if isinstance(value, (np.ndarray, jax.Array)):
+                self.run[f'initializations/{key}'].upload(
+                    neptune.types.File.as_pickle(value)
+                )
+            else:
+                self.run[f'initializations/{key}'] = neptune.utils.stringify_unsupported(value)
