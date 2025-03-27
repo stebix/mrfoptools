@@ -28,7 +28,7 @@ import mrfoptools.optimization.gradtools.jacdesc as jacdesc
 import mrfoptools.optimization.diagnostics.references as refcs
 
 from mrfoptools.namegen import generate_name
-from mrfoptools.experiment.gradientbased import RunInfo, create_relaxometric_combinations, construct_run_name
+from mrfoptools.experiment.gradientbased import RunInfo, construct_run_name
 from mrfoptools.experiment.parameterclasses import Protocol, Initializations, Hyperparameter, BathtubLossParameters, InitializationType
 from mrfoptools.optimization.costgrad import cost_grad_builder
 from mrfoptools.optimization.diagnostics.plothelpers import CachingPlotter
@@ -73,7 +73,7 @@ def main():
         tr_value=const_tr_init
     )
     yun_tight_fa_init = jnp.deg2rad(initools.load_yun_pattern(style='tight', element='fa'))
-    yun_tight_initializations = Initializations(
+    yun_tight_initializations = Initializations( # noqa F841
         fa=yun_tight_fa_init,
         tr=jnp.full(fill_value=const_tr_init, shape=NR),
         phases=jnp.full(fill_value=const_phase_init, shape=NR),

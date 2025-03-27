@@ -13,7 +13,7 @@ import jax.numpy as jnp
 import mrfoptools.initialization.initialization as initools
 
 from mrfoptools.namegen import generate_name
-from mrfoptools.experiment.gradientbased import RunInfo, construct_run_name, create_relaxometric_combinations, run_experiment
+from mrfoptools.experiment.gradientbased import RunInfo, run_experiment
 from mrfoptools.experiment.parameterclasses import Protocol, Initializations, Hyperparameter, BathtubLossParameters, InitializationType
 
 def main():
