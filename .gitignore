@@ -6,6 +6,9 @@ __pycache__/
 # project-specific benchmark results
 benchresults/
 
+# experiment logging
+.neptune/
+
 # VS code stuff
 .vscode/
 
