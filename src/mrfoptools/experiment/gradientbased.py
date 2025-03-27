@@ -6,8 +6,6 @@ Tooling to perform gradient-based optimization on MRF sequences.
 # ruff: noqa: F821
 # ruff: noqa: F841
 # ruff: noqa: F401
-
-
 import argparse
 import time
 import enum
@@ -43,13 +41,16 @@ import mrfoptools.optimization.diagnostics.references as refcs
 from mrfoptools.optimization.costgrad import cost_grad_builder
 from mrfoptools.optimization.diagnostics.plothelpers import CachingPlotter
 from mrfoptools.optimization.diagnostics.references import CostValueRange
-from mrfoptools.io.bag import OptimizationBag, store_optimization_bag
 from mrfoptools.optimization.diagnostics.neptune import NeptuneLogger, create_run
 from mrfoptools.namegen import generate_name
 
+from mrfoptools.io.io import SaveFormat
+from mrfoptools.io.pickleutils import store_pickle
+from mrfoptools.io.bag import OptimizationBag, store_optimization_bag
 
-from mrfoptools.experiment.dataclasses import (Protocol, Initializations,
-                                               Hyperparameter, BathtubLossParameters)
+from mrfoptools.experiment.parameterclasses import (Protocol, Initializations,
+                                                    Hyperparameter, BathtubLossParameters,
+                                                    InitializationType)
 
 DEFAULT_LOGGER_NAME: str = '.'.join(('main', __name__))
 logger = logging.getLogger(DEFAULT_LOGGER_NAME)
@@ -69,27 +70,8 @@ def create_relaxometric_combinations(
     return T1.flatten(), T2.flatten()
 
 
-class SaveFormat(enum.Enum):
-    PICKLE = 'pickle'
-    ZARR = 'zarr'
 
-
-def store_pickle(
-    data: Mapping,
-    savepath: Path,
-    *,
-    overwrite: bool = False
-) -> None:
-    """Store arbitrary data mapping to pickle file."""
-    if savepath.exists() and not overwrite:
-        raise FileExistsError(f'Pickle storage failed: file \'{savepath}\' already exists.')
-    if not savepath.suffix.endswith('.pkl'):
-        savepath = savepath.with_suffix('.pkl')
-    with open(savepath, mode='wb') as f:
-        pickle.dump(data, f)    
-    logger.info(f'Pickle storage successful: data saved to \'{savepath}\'')
-
-
+@attrs.define
 class RunInfo:
     base_name: str
     run_dir: Path
@@ -117,8 +99,8 @@ def construct_run_name(
 
 def main():
 
-    expdir = Path('/home/jannik/storage/mrf-optruns-march-exp/v2-test-1')
-    expdir.mkdir()
+    expdir = Path('/home/jannik/storage/mrf-optruns-march-exp/v2-test-6')
+    expdir.mkdir(exist_ok=True)
 
     runinfo = RunInfo(
         base_name='fsig-hpo-test',
@@ -142,14 +124,29 @@ def main():
         max_states=600,
         NR=1000
     )
+
+    const_fa_init = 49
+    const_tr_init = 12
+    const_phase_init = 0
+    seed = 1337
+
+    rng = np.random.default_rng(seed)
+    init_fa_pattern = jnp.deg2rad(
+          initools.create_constant_pattern(amplitude=const_fa_init, length=protocol.NR)
+        + rng.normal(size=protocol.NR)
+    )
     initializations = Initializations(
-        fa=jnp.deg2rad(jnp.full(fill_value=49, shape=protocol.NR)),
-        tr=jnp.full(fill_value=12, shape=protocol.NR),
-        seed=1337
+        fa=init_fa_pattern,
+        tr=jnp.full(fill_value=const_tr_init, shape=protocol.NR),
+        phases=jnp.full(fill_value=const_phase_init, shape=protocol.NR),
+        seed=seed,
+        type_=InitializationType.CONSTANT_PERTURBED,
+        fa_value=const_fa_init,
+        tr_value=const_tr_init
     )
     hyperparameters = Hyperparameter(
-        step_size=0.005,
-        max_iterations=50,
+        step_size=0.01,
+        max_iterations=500,
         min_fa=np.deg2rad(1),
         max_fa=np.deg2rad(90),
         bathtub_loss_parameters=BathtubLossParameters(
@@ -159,7 +156,7 @@ def main():
             gamma=10
         )
     )
-    run_experiment_v2(
+    run_experiment(
         run_info=runinfo,
         protocol=protocol,
         initializations=initializations,
@@ -170,18 +167,19 @@ def main():
 
 
 
-def run_experiment_v2(
+def run_experiment(
         run_info: RunInfo,
         protocol: Protocol,
         initializations: Initializations,
         hyperparameters: Hyperparameter,
-        save_format: SaveFormat | Sequence[SaveFormat] = SaveFormat.ZARR
+        save_format: SaveFormat | Sequence[SaveFormat] = SaveFormat.ZARR,
+        leave_pbar: bool = True
     ):
 
-    base_name: str = generate_name()
-    sweep_ID: str = '-'.join((base_name, str(uuid4())))
-    sweep_run = create_run(name=f'{base_name}-sweep', tags=['sweep-level'])
-    sweep_run['sys/group_tags'].add(sweep_ID)
+    # base_name: str = generate_name()
+    #sweep_ID: str = '-'.join((base_name, str(uuid4())))
+    #sweep_run = create_run(name=f'{base_name}-sweep', tags=['sweep-level'])
+    #sweep_run['sys/group_tags'].add(sweep_ID)
 
     run_name: str = construct_run_name(run_info.base_name, run_info.subrun_index)
 
@@ -190,7 +188,7 @@ def run_experiment_v2(
         tags=run_info.tags)
 
     if run_info.sweep_ID is not None:    
-        run['sys/group_tags'].add(sweep_ID)
+        run['sys/group_tags'].add(run_info.sweep_ID)
 
     # construct the smoothness loss function
     radius = hyperparameters.bathtub_loss_parameters.radius
@@ -227,18 +225,17 @@ def run_experiment_v2(
     assert len(T1) == len(T2), 'T1 and T2 value count mismatch'
     n_species = T1.shape[0]
 
-    const_tr = 12
-    const_fa_init = 49
-    const_phase = 0
-
     max_iterations = hyperparameters.max_iterations
-    min_fa = np.deg2rad(hyperparameters.min_fa)
-    max_fa = np.deg2rad(hyperparameters.max_fa)
+    min_fa = hyperparameters.min_fa
+    max_fa = hyperparameters.max_fa
 
-    # Add random noise in units degrees (small perturbation)
-    fa_pattern_np = initools.create_constant_pattern(amplitude=const_fa_init, length=NR)
-    tr_pattern = jnp.array(initools.create_constant_pattern(amplitude=const_tr, length=NR))
-    phases = jnp.array(initools.create_constant_pattern(amplitude=const_phase, length=NR))
+    phases = initializations.phases
+    tr_pattern = initializations.tr
+    initial_fa = initializations.fa
+
+    reference_patterns = refcs.fetch_default_reference_fa_patterns(unit='rad')
+    # also track relative gain against the initial flip angle pattern
+    reference_patterns['initial'] = initial_fa
 
     forward_fatr = epgfisp.specialize_simulate_fisp(
         T1=T1, T2=T2, M0=M0, phases=phases, TE=TE, TI=TI,
@@ -248,18 +245,7 @@ def run_experiment_v2(
         func=optblocks.forward,
         TR=tr_pattern, M0=M0, phases=phases, TE=TE, TI=TI, inversion_efficiency=inversion_efficiency, max_states=max_states
     )
-
-    seed = run_info.seed
-    key = jax.random.key(seed)
-    initial_fa = jnp.deg2rad(
-        jnp.array(fa_pattern_np) + jax.random.normal(key=key, shape=fa_pattern_np.shape)
-    )
-
-    yun_amplitudes_literature = [35, 43, 70, 45, 27]
-    amplitudes = jnp.deg2rad(jnp.array(yun_amplitudes_literature))
-    yun_fa_manual = jnp.array(initools.create_sinusoidal_pattern(amplitudes, 200))
-    yun_tr = tr_pattern #jnp.array(yun_pattern.repetition_times)
-    yun_init_signals = forward_fatr(yun_fa_manual, yun_tr)
+    forward_jit = jax.jit(forward)
 
 
     def tv_step(T1, T2, fa):
@@ -292,18 +278,6 @@ def run_experiment_v2(
     cost_grad_function = cost_grad_builder(cg_functions)
 
 
-    seed = int(time.time())
-
-    key = jax.random.key(seed)
-
-    initial_fa = initial_fa
-
-
-    run['parameters/protocol'] = neptune.utils.stringify_unsupported(
-        attrs.asdict(protocol)
-    )
-
-
     metadata = {
         'timestamp' : (datetime.
                        datetime.
@@ -320,60 +294,55 @@ def run_experiment_v2(
     )            
     signal_plotter = CachingPlotter.create_signal_plotter()
 
-
-    run['initializations/fa'].upload(np.array(initial_fa))
-    run['initializations/tr'].upload(np.array(tr_pattern))
-    run['initializations/seed'] = seed
-
     fa = initial_fa.copy()
 
-    optimizer = optax.sgd(learning_rate=hyperparameters.step_size)
+    # optimizer setup
+    # optimizer = optax.sgd(learning_rate=hyperparameters.step_size)
+    optimizer = optax.adam(learning_rate=hyperparameters.step_size)
+
     optimizer_state = optimizer.init(fa)
-
-    forward_jit = jax.jit(forward)
-    # log_signals = signal_log_builder(forward=forward_jit, T1=T1, T2=T2, writer=writer, initial_signals=forward_jit(T1, T2, initial_fa))
-
-    const_fa_init = jnp.array(initools.create_constant_pattern(amplitude=np.deg2rad(49), length=NR))
+    logger.info(f'successfully initialized optimizer {optimizer} '
+                f'with step size {hyperparameters.step_size}')
 
 
 
+    # set up reference cost to evaluate relative fitness of optimization
     reference_costfuncs = {
         'signal': costfuncs.inverse_mean_signal_criterion,
         'orthogonality': costfuncs.orthogonality_criterion,
     }
-    reference_specs = {
-        'yun-base': (T1, T2, yun_fa_manual),
-        'constfa-base': (T1, T2, const_fa_init),
-    }
+    reference_specs = refcs.expand_to_reference_specs(reference_patterns, pre_args=(T1, T2), post_args=())
     reference_costs = refcs.ReferenceCost.from_mapping(
         refcs.compute_reference_costs(forward_jit, reference_costfuncs, reference_specs)
     )
     relative_gain_evaluator = refcs.RelativeGainEvaluator(*reference_costs, prefix='')
+
 
     neplogger = NeptuneLogger(
         run=run,
         fa_plotter=fa_plotter,
         signal_plotter=signal_plotter,
     )
-
+    # log static run-wide applicable information to the Neptune framework
+    neplogger.log_protocol(attrs.asdict(protocol))
+    neplogger.log_initializations(attrs.asdict(initializations))
 
     fa_history = []
-    cost_history = [] # noqa: F841
+    cost_history = []
     sig_history = []
 
-    for iteration in tqdm.trange(max_iterations, leave=True):
-        
-        fa_history.append(fa)
-        
+    for iteration in tqdm.trange(max_iterations, leave=leave_pbar):
+        # compute cost and gradient for currrent parameters
         cost_grad_mapping = cost_grad_function(T1, T2, fa)
         cost_grad_mapping_numpy = costgrad.cast_to_numpy(cost_grad_mapping)
-
+        # record first entries of history
+        fa_history.append(fa)
         cost_history.append(cost_grad_mapping_numpy)
 
         neplogger.log_costs(cost_grad_mapping, iteration)
         neplogger.log_gradients(cost_grad_mapping, iteration)
 
-        # TODO: homogenize this with the tensorboard logger
+        # Compute gradient diagnostic metrics and optimization fitness (relative gains)
         cossim = gradtools.compute_gradient_cosine_similarities(cost_grad_mapping_numpy)
         magsim = gradtools.compute_gradient_magnitude_similarities(cost_grad_mapping_numpy)
         relgains = relative_gain_evaluator(cost_grad_mapping_numpy)
@@ -386,7 +355,7 @@ def run_experiment_v2(
         neplogger.log_flipangles(fa, iteration, close=True)
         neplogger.log_signals(signals, iteration, close=True)
 
-        
+        # TODO: Legacy manual gradient combination
         #gradient = (  f_smoothness * cost_grad_mapping['smoothness'].grad
         #            + f_signal * cost_grad_mapping['signal'].grad
         #            + f_orthogonality * cost_grad_mapping['orthogonality'].grad)
@@ -399,6 +368,8 @@ def run_experiment_v2(
             axis=0
         )
         gradient = jacdesc.conFIG(jacobian)
+
+        gradient = cost_grad_mapping['signal'].grad + cost_grad_mapping['smoothness'].grad
         
         neplogger.log_gradient(gradient, 'mean-conFIG', iteration)
         
@@ -424,6 +395,10 @@ def run_experiment_v2(
             store_pickle(history_data, run_info.run_dir / fname_pkl)
 
         elif save_format == SaveFormat.ZARR:
+            protocol = attrs.asdict(protocol)
+            hyperparameters = attrs.asdict(hyperparameters)
+            initializations = attrs.asdict(initializations)
+
             bag = OptimizationBag(
                 protocol=protocol,
                 hyperparameters=hyperparameters,
@@ -440,7 +415,7 @@ def run_experiment_v2(
 
 
 
-def run_experiment(logdir_suffix: str):
+def run_experiment_legacy(logdir_suffix: str):
 
     sweep_ID: str = '-'.join((generate_name(), str(uuid4())))
     sweep_run = create_run(name='fsig-hpo-test', tags=['sweep-level'])
