@@ -12,12 +12,17 @@ Typical reference patterns are e.g.:
 import enum
 from collections.abc import Callable, Mapping
 from numbers import Number
-from typing import NamedTuple
+from typing import NamedTuple, Literal
 
 import attrs
+import jax
+import jax.numpy as jnp
 
 from mrfoptools.optimization.costgrad import CostContainer
+import mrfoptools.initialization.initialization as initools
 
+# pseudo Ernst angle for constant flip angle pattern in degrees
+PSEUDO_ERNST_ANGLE: float = 49.5
 
 class NamePair(NamedTuple):
     costname: str
@@ -27,6 +32,48 @@ class NamePair(NamedTuple):
 class CostValueRange(enum.Enum):
     POSITIVE = 'positive'
     NEGATIVE = 'negative'
+
+
+
+def fetch_default_reference_fa_patterns(unit: Literal['deg', 'rad'] = 'rad') -> dict[str, jax.Array]:
+    """
+    Fetch the default flip angle patterns for the Yun variants
+    and the constant pseudo-Ernst angle pattern.
+    """
+    if unit == 'deg':
+        func = lambda x: x # noqa E731
+    elif unit == 'rad':
+        func = jnp.deg2rad
+    else:
+        raise ValueError(f'Invalid unit specifier: \'{unit}\'')
+
+    NR: int = 1000
+    default_reference_patterns = {
+        'yun-canonical': func(initools.load_yun_pattern(style='canonical', element='fa')),
+        'yun-tight': func(initools.load_yun_pattern(style='tight', element='fa')),
+        'constant-psea': func(initools.create_constant_pattern(PSEUDO_ERNST_ANGLE, length=NR))
+    }
+    return default_reference_patterns
+
+
+def expand_to_reference_specs(
+    reference_patterns: Mapping[str, jax.Array],
+    pre_args: tuple = (),
+    post_args: tuple = (),
+    suffix: str = 'base'
+) -> dict[str, tuple]:
+    """
+    Expand a mapping of reference patterns to reference specifications
+    by adding pre- and post-arguments to each pattern such that the result
+    is compatible with the forward model function signature.
+
+    See usage in `compute_reference_costs`.
+    """
+    reference_specs = {}
+    for name, pattern in reference_patterns.items():
+        key = f'{name}-{suffix}'
+        reference_specs[key] = tuple((*pre_args, pattern, *post_args))
+    return reference_specs
 
 
 def compute_reference_costs(
@@ -132,15 +179,15 @@ class RelativeGainEvaluator:
     ) -> dict[str, float]:
 
         relative_gains: dict[str, float] = {}
-        for base_cost in self.base_costs:
-            logname = f'{self.prefix}/{base_cost.costname}-{base_cost.refname}'
-            cost_container = transient_costs[base_cost.costname]
-            if base_cost.range is CostValueRange.POSITIVE:
-                relative_gain = base_cost.value / cost_container.cost
-            elif base_cost.range is CostValueRange.NEGATIVE:
-                relative_gain = cost_container.cost / base_cost.value
+        for reference_cost in self.reference_costs:
+            logname = f'{self.prefix}/{reference_cost.costname}-{reference_cost.refname}'
+            cost_container = transient_costs[reference_cost.costname]
+            if reference_cost.range is CostValueRange.POSITIVE:
+                relative_gain = reference_cost.value / cost_container.cost
+            elif reference_cost.range is CostValueRange.NEGATIVE:
+                relative_gain = cost_container.cost / reference_cost.value
             else:
-                raise ValueError(f'Invalid cost value range: {base_cost.range}')
+                raise ValueError(f'Invalid cost value range: {reference_cost.range}')
 
             relative_gains[logname] = relative_gain
         return relative_gains
