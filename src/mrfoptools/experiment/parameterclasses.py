@@ -13,6 +13,8 @@ from numbers import Number
 import jax
 import numpy as np
 
+from mrfoptools.initialization.initialization import InitializationType
+
 Array: TypeAlias = jax.Array | np.ndarray
 
 @attrs.define
@@ -39,7 +41,18 @@ class Protocol:
 class Initializations:
     fa: Array
     tr: Array
+    phases: Array
     seed: int
+    type_: InitializationType
+    fa_value: float | None = None
+    tr_value: float | None = None
+
+    def __attrs_post_init__(self) -> None:
+        if self.type_ in (InitializationType.CONSTANT, InitializationType.CONSTANT_PERTURBED):
+            if self.fa_value is None:
+                raise ValueError('`fa_value` must be specified for constant initializations.')
+            if self.tr_value is None:
+                raise ValueError('`tr_value` must be specified for constant initializations.')
 
 
 @attrs.define
