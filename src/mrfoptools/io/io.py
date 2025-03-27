@@ -1,3 +1,4 @@
+import enum
 import pathlib
 import dataclasses
 import numpy as np
@@ -6,6 +7,11 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 import zarr
+
+
+class SaveFormat(enum.Enum):
+    PICKLE = 'pickle'
+    ZARR = 'zarr'
 
 
 def expand_to_repr(m: Mapping[str, Sequence]) -> str:
