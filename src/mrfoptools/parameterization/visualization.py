@@ -22,7 +22,7 @@ def plot_control_points(
     postprocess_y: Callable | None = None
 ) -> Axis:
     """
-    PLot controlpoints as x-y scatter plot with vertical lines.
+    Plot controlpoints as x-y scatter plot with vertical lines.
 
     Parameters
     ----------
