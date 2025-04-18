@@ -16,9 +16,9 @@ from mrfoptools.parameterization.parameterization import ControlPoints
 from mrfoptools.parameterization.parameterization import initialize_parameterization
 from mrfoptools.parameterization.expansion import expand
 
-from mrfoptools.optimization.simulated_annealing.perturbations import perturb
+from mrfoptools.optimization.simulated_annealing.perturbations import legacy_perturb
 
-from mrfoptools.epg.sequences.fisp import specialize_simulate_fisp
+from mrfoptools.epg.sequences.jax.fisp import specialize_simulate_fisp
 from mrfoptools.optimization.costfuncs import minimum_average_criterion
 from mrfoptools.optimization.simulated_annealing.cooling import exponential_cooling
 
@@ -198,7 +198,7 @@ def adaptive_non_isotropic(
 
                     key, subkey_p, subkey_a = jax.random.split(key, num=3)
 
-                    perturbed_parameters = perturb(index, parameters, bounds, temp/relscale, subkey_p)
+                    perturbed_parameters = legacy_perturb(index, parameters, bounds, temp/relscale, subkey_p)
                     
                     # rebuild control points
                     perturbed_controlpoints = ControlPoints(
