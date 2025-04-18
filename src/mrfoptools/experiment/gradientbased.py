@@ -361,6 +361,7 @@ def run_experiment(
         #            + f_orthogonality * cost_grad_mapping['orthogonality'].grad)
         
         # perform gradient deconfliction and analytical combination
+        """
         jacobian = jnp.stack(
             [cost_grad_mapping['smoothness'].grad,
              cost_grad_mapping['signal'].grad,
@@ -368,10 +369,15 @@ def run_experiment(
             axis=0
         )
         gradient = jacdesc.conFIG(jacobian)
+        """
 
-        gradient = cost_grad_mapping['signal'].grad + cost_grad_mapping['smoothness'].grad
+        gradient = (
+              0.0 * cost_grad_mapping['signal'].grad
+            + 0.0 * cost_grad_mapping['smoothness'].grad
+            + 1.0 * cost_grad_mapping['orthogonality'].grad
+        )
         
-        neplogger.log_gradient(gradient, 'mean-conFIG', iteration)
+        neplogger.log_gradient(gradient, 'mean-manual', iteration)
         
         update, optimizer_state = optimizer.update(gradient, optimizer_state, fa)
         fa = optax.apply_updates(fa, update)
