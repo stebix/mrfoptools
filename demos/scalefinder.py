@@ -4,7 +4,7 @@ Script demo of the scale finding algorithm.
 import jax
 import jax.numpy as jnp
 
-from mrfoptools.optimization.simulated_annealing.calibration import find_scale_factors, VariableType
+from mrfoptools.optimization.simulated_annealing.calibration import find_scale_factors_legacy, VariableType
 
 from mrfoptools.optimization.simulated_annealing.annealing import generate_cost_function
 
@@ -29,7 +29,7 @@ def main():
         'sample_count' : 10,
     }
 
-    sf = find_scale_factors(**kwargs)
+    sf = find_scale_factors_legacy(**kwargs)
 
     print(sf)
 
