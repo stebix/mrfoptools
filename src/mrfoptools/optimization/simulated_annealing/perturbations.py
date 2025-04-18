@@ -49,7 +49,7 @@ def clamp_index(i: int, min: int, max: int) -> int:
     return max_clamp_index(min_clamp_index(i, min), max)
 
 
-def perturb(
+def legacy_perturb(
     index: int,
     parameters: jax.Array,
     bounds: tuple[float, float],
@@ -106,7 +106,7 @@ class PerturbedControlPoints(NamedTuple):
 
 
 
-def perturb_v2(
+def perturb_gaussian(
     index: int,
     parameters: jax.Array,
     bounds: tuple[float, float],
