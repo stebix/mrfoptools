@@ -20,18 +20,7 @@ from mrfoptools.optimization.simulated_annealing.perturbations import perturb
 
 from mrfoptools.epg.sequences.fisp import specialize_simulate_fisp
 from mrfoptools.optimization.costfuncs import minimum_average_criterion
-
-
-def linear_cooling(temp_start: float, r: float, iter: int) -> float:
-    return temp_start - r * iter
-
-
-def exponential_cooling(temp_start: float, r: float, iter: int) -> float:
-    return temp_start * r ** iter
-
-
-def logarithmic_cooling(temp_start: float, r: float, iter: int) -> float:
-    return temp_start / jnp.log1p(iter)
+from mrfoptools.optimization.simulated_annealing.cooling import exponential_cooling
 
 
 
