@@ -207,6 +207,10 @@ def generate_random_variable_fixed(
     parameters = jax.random.uniform(
         key=key, shape=n_controlpoints, minval=bounds[0], maxval=bounds[1]
     )
+    # first and last control points are static on the bounds
+    parameters = parameters.at[0].set(bounds[0])
+    parameters = parameters.at[-1].set(bounds[1])
+    # only the inner control points are mutable: restrict indices
     indices = jnp.arange(1, n_controlpoints - 1)
     return Variable(
         indices=indices,
@@ -251,10 +255,12 @@ def regenerate_randomized(key: jax.Array, variable: Variable) -> Variable:
     the bounds of the variable.
     Indices, bounds, relscale and designation are reused.
     """
-    parameters = jax.random.uniform(
-        key=key, shape=variable.parameters.shape,
+    indices = variable.indices
+    randomized_parameters = jax.random.uniform(
+        key=key, shape=indices.shape,
         minval=variable.bounds[0], maxval=variable.bounds[1]
     )
+    parameters = variable.parameters.at[indices].set(randomized_parameters)
     if variable.sort:
         parameters = jnp.sort(parameters)
     return variable.with_new_parameters(parameters)
