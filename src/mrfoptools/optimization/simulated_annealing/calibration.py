@@ -28,7 +28,7 @@ class VariableType(enum.Enum):
 
 
 
-def sample_perturbation_costs(
+def sample_perturbation_costs_legacy(
     sample_count: int,
     variable: VariableType,
     relscale: float,
@@ -232,3 +232,4 @@ def find_scale_factors(
         median_differences[variable] = mdiffs
         
     return median_differences
+
