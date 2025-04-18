@@ -6,6 +6,10 @@ __pycache__/
 # project-specific benchmark results
 benchresults/
 
+# small epehmeral debug scripts
+scripts/debug/*
+
+
 # experiment logging
 .neptune/
 
