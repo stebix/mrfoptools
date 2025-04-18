@@ -103,3 +103,42 @@ class PerturbedControlPoints(NamedTuple):
     """
     initial: ControlPoints
     perturbed: ControlPoints
+
+
+
+def perturb_v2(
+    index: int,
+    parameters: jax.Array,
+    bounds: tuple[float, float],
+    relscale: float,
+    key: jax.Array,
+) -> jax.Array:
+    """
+    Perturb the coordinate at the given index of the parameter array.
+
+    Parameters
+    ----------
+    index : int
+        Index of the parameter to be perturbed.
+    parameters : jax.Array
+        Parameterization value array to be perturbed.
+        Expected to be of shape ``n_controlpoints``.
+    bounds : tuple[float, float]
+        Lower and upper bounds for the parameter values.
+        Excursion beyond these bounds is clipped.
+    relscale : float
+        Scaling factor for the perturbation.
+    key : jax.Array
+        Random key for reproducible randomness.
+    
+    Returns
+    -------
+    perturbed_parameters : jax.Array
+        Perturbed parameter array.
+    """        
+    extent: float = bounds[1] - bounds[0]
+    update = (  parameters.at[index].get(mode='clip')
+              + jax.random.normal(key) * relscale * extent)
+    update = jnp.clip(update, min=bounds[0], max=bounds[1])
+    parameters_perturbed = parameters.at[index].set(update, mode='clip')
+    return parameters_perturbed
