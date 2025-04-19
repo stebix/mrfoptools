@@ -14,8 +14,8 @@ from mrfoptools.epg.sequences.jax.fisp import specialize_simulate_fisp
 
 
 def main():
-    INIT_FA = 50
-    INIT_TR = 12
+    INIT_FA: float = 50.0
+    INIT_TR: float = 12.0
     NR = 1000
     M0 = 1.0
     TE = 2.2
@@ -45,7 +45,7 @@ def main():
 
     import line_profiler
 
-    @line_profiler.profile
+    @jax.jit
     def costfunc(
         fa_x, fa_y, tr_x, tr_y
     ):
@@ -80,7 +80,7 @@ def main():
         sort=True
     )
     fa_y = Variable.create_with_floating_edges(
-        parameters=jnp.full(shape=n_controlpoints, fill_value=INIT_FA),
+        parameters=jnp.full(shape=n_controlpoints, fill_value=jnp.deg2rad(INIT_FA)),
         bounds=fa_controlpoint_bounds,
         relscale=0.1,
         designation=Designation(type=ParameterType.FA, axis=ParameterAxis.Y),
@@ -98,10 +98,14 @@ def main():
     key = jax.random.key(12390)
 
     r = calib.sweep_sample_perturbations_costs(
-        key=key, variables=variables, j_max=2, sample_count=10, cost_func=costfunc
+        key=key, variables=variables, j_max=4, sample_count=1000, cost_func=costfunc
     )
 
-    print(r)
+    mcost = calib.compute_median_costs(r)
+    scale_factors = calib.compute_scale_factors(mcost)
+
+    print('Scale factors:')
+    print(scale_factors)
 
 
 
