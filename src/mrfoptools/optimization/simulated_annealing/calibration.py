@@ -67,7 +67,7 @@ def _sample_perturbation_costs(
     if designation not in mapping:
         raise ValueError(f'variable with designation {designation} not found')
 
-    pbar_kwargs = pbar_kwargs or {}
+    pbar_kwargs = {'desc' : 'samples progress'} | (pbar_kwargs or {})
     wrapped_sample_counter = tqdm.trange(sample_count, **pbar_kwargs)
 
     costs: list[jax.Array] = []
@@ -129,7 +129,7 @@ def sample_perturbation_costs(
     costs are sampled for every variable.
     """
     perturbation_costs: dict[Designation, jax.Array] = {}
-    pbar_kwargs = pbar_kwargs or {}
+    pbar_kwargs = {'desc' : 'variables sweep'} | (pbar_kwargs or {})
     wrapped_variables = tqdm.tqdm(variables, **pbar_kwargs)
     for variable in wrapped_variables:
         designation = variable.designation
@@ -191,7 +191,7 @@ def sweep_sample_perturbations_costs(
         variables in the order they are given in the `variables`.
     """
     w: float = 0.03
-    pbar_kwargs = pbar_kwargs or {}
+    pbar_kwargs = {'desc' : 'relscale sweep'} | (pbar_kwargs or {})
     # nested mapping with scale factor to designation tuple to costs
     scale2costs: dict[float, dict[Designation, jax.Array]] = {}
     wrapped_j_values = tqdm.trange(1, j_max + 1, **pbar_kwargs)
