@@ -26,7 +26,7 @@ def main():
         'bounds_specification' : absbounds,
         'cost_func' : cost_func,
         'key' : jax.random.key(345783645),
-        'sample_count' : 10,
+        'sample_count' : 100,
     }
 
     sf = find_scale_factors_legacy(**kwargs)
