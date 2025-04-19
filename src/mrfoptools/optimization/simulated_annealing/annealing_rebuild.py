@@ -1,8 +1,10 @@
 import datetime
+import warnings
 
 from collections.abc import Callable, Sequence
 from typing import Any
 from functools import partial
+from copy import deepcopy
 
 import numpy as np
 import jax
@@ -194,13 +196,140 @@ def anneal(
     return variables              
 
 
+def precompute_total_iterations(
+    variables: Sequence[Variable],
+    max_iter: int
+) -> int:
+    """
+    Precompute the total number of iterations for the annealing process.
+    This is the product of the number of variables, the number of indices
+    and the number of iterations.
+    """
+    pcount = np.sum(np.fromiter((len(p) for p in get_parameters(variables)), dtype=int))
+    return max_iter * len(variables) * pcount
 
+
+def precheck_variables_1D(
+    variables: Sequence[Variable]
+) -> None:
+    for variable in variables:
+        p = variable.parameters
+        if p.ndim != 1:
+            warnings.warn(
+                f'Variable {variable.designation} has {p.ndim} '
+                f'dimensions, expected 1D array.'
+            )
+    
+
+
+def anneal_modern(
+    key: jax.Array,
+    variables: Sequence[Variable],
+    cost_func: Callable[[*tuple[jax.Array, ...]], jax.Array],
+    max_iter: int,
+    temp_initial: float,
+    cooling_func: Callable[[float, float, int], float],
+) -> Any:
+    pass
+
+    if not are_ordered_correctly(variables):
+        raise ValueError('ordering mismatch for variables')
+    
+    precheck_variables_1D(variables)
+    total = precompute_total_iterations(variables, max_iter)
+    pbar = tqdm.tqdm(desc='total annealing progress', unit='it', total=total)    
+
+    cost = cost_func(*get_parameters(variables))
+    temp = temp_initial
+    r = 0.01 ** (1 / max_iter) # noqa: F841
+
+    cooling_scheme = partial(cooling_func, r=r)
+
+    accept_counter = 0
+    reject_counter = 0
+    temp_history: list[float] = []
+
+    cost_history: list[float] = []
+    candidate_cost_history: list[float] = []
+    variables_history: list[list[Variable]] = []
+
+    for n_iter in range(max_iter):
+
+        for varindex, variable in enumerate(variables):
+
+            for paramindex in variable.indices:
+
+                perturbed_parameters = perturb_gaussian(
+                    index=paramindex,
+                    parameters=variable.parameters,
+                    bounds=variable.bounds,
+                    relscale=temp/variable.relscale,
+                    key=key
+                )
+
+                if variable.sort:
+                    perturbed_parameters = jnp.sort(perturbed_parameters)
+                # correct ordering is paramount here since we stuff this directly in the 
+                # cost function that internally expand the control points into the full
+                # specifications via spline interpolation
+                args = tuple(
+                    variables[j].parameters
+                    if j != varindex else perturbed_parameters
+                    for j in range(len(variables))
+                )
+                candidate_cost = cost_func(*args)
+
+                candidate_cost_history.append(candidate_cost)
+                cost_history.append(cost)
+                variables_history.append(
+                    deepcopy(variables)
+                )
+
+                acc_prob = metropolis_probability(candidate_cost, cost, temp)
+
+                if jax.random.uniform(key) < acc_prob:
+                    # accept the new parameters
+                    variables[varindex] = variable.with_new_parameters(perturbed_parameters)
+                    cost = candidate_cost
+                    # optimize this away possibly
+                    pbar.set_postfix_str(f'accept! @ prob: {acc_prob:.3f} | cost {cost:.2f} | candcost: {candidate_cost:.2f} | temp: {temp:.6f}')
+                    accept_counter += 1
+                else:
+                    # reject the new parameters
+                    pbar.set_postfix_str(f'reject! @ prob: {acc_prob:.3f} | cost {cost:.2f} | candcost: {candidate_cost:.2f} | temp: {temp:.6f}')
+                    reject_counter += 1
+
+                pbar.update()
+
+        temp_history.append(temp)
+        temp = cooling_scheme(temp_init=temp_initial, n_iter=n_iter)
+
+    results = {
+        'variables': variables,
+        'temp_history': temp_history,
+        'cost_history': cost_history,
+        'candidate_cost_history': candidate_cost_history,
+        'variables_history': variables_history,
+        'accept_counter': accept_counter,
+        'reject_counter': reject_counter,
+    }
+    return results
+
+
+def anneal_abstract(
+    key: jax.Array,
+    variables: Sequence[Variable],
+    cost_func: Callable[[*tuple[jax.Array, ...]], jax.Array],
+    acceptance_func: Callable[[float, float, float], bool],
+
+) -> None:
+    pass
 
 
 
 def main():
-    INIT_FA = 50
-    INIT_TR = 12
+    INIT_FA = 50.0
+    INIT_TR = 12.0
     NR = 1000
     M0 = 1.0
     TE = 2.2
@@ -231,39 +360,67 @@ def main():
     n_controlpoints: int = 10
 
     fa_controlpoint_bounds = (jnp.deg2rad(1.0), jnp.deg2rad(90.0))
-    tr_controlpoint_bounds = (5.0, 500.0)
+    tr_controlpoint_bounds = (10.0, 250.0)
     x_bounds = (0.0, 1000.0)
     
     fa_x = Variable.create_with_fixed_edges(
         parameters=jnp.linspace(0, 1000, num=n_controlpoints),
         bounds=x_bounds,
-        relscale=0.1,
+        relscale=8.633,
         designation=Designation(type=ParameterType.FA, axis=ParameterAxis.X),
         sort=True
     )
     tr_x = Variable.create_with_fixed_edges(
         parameters=jnp.linspace(0, 1000, num=n_controlpoints),
         bounds=x_bounds,
-        relscale=0.1,
-        designation=Designation(type=ParameterType.FA, axis=ParameterAxis.X),
+        relscale=882.0545,
+        designation=Designation(type=ParameterType.TR, axis=ParameterAxis.X),
         sort=True
     )
     fa_y = Variable.create_with_floating_edges(
-        parameters=jnp.full(shape=n_controlpoints, fill_value=INIT_FA),
+        parameters=jnp.full(shape=n_controlpoints, fill_value=jnp.deg2rad(INIT_FA)),
         bounds=fa_controlpoint_bounds,
-        relscale=0.1,
+        relscale=1.8557,
         designation=Designation(type=ParameterType.FA, axis=ParameterAxis.Y),
         sort=False
     )
     tr_y = Variable.create_with_floating_edges(
         parameters=jnp.full(shape=n_controlpoints, fill_value=INIT_TR),
         bounds=tr_controlpoint_bounds,
-        relscale=0.1,
+        relscale=195.0854,
         designation=Designation(type=ParameterType.TR, axis=ParameterAxis.Y),
         sort=False
     )
 
-    result = anneal()
+    @jax.jit
+    def costfunc(
+        fa_x, fa_y, tr_x, tr_y
+    ):
+        nreq = 1000
+        w_time = 1.0
+        w_signal = 1.0
+        
+        fa = expand(fa_x, fa_y, nreq=nreq, extrap=False, bounds=(jnp.deg2rad(1.0), jnp.deg2rad(90.0)))
+        tr = expand(tr_x, tr_y, nreq=nreq, extrap=False, bounds=(6.0, 500.0))
+        signals = simulate_fisp(fa, tr)
+        return w_time * jnp.sqrt(jnp.sum(tr)) + w_signal / minimum_average_criterion(signals)
+    
+
+    results = anneal_modern(
+        key=jax.random.key(seed=145383),
+        variables=[fa_x, fa_y, tr_x, tr_y],
+        cost_func=costfunc,
+        max_iter=250,
+        temp_initial=5.0,
+        cooling_func=exponential_cooling
+    )
+
+    print('acceptance ratio:', results[1] / (results[1] + results[2]))
+    print('final temperature:', results[0][-1])
+
+
+if __name__ == '__main__':
+    main()
 
 
 
