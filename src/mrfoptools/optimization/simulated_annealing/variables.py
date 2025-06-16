@@ -328,3 +328,36 @@ def get_parameters(
     Get the parameters of the variables in the given sequence.
     """
     return tuple(variable.parameters for variable in variables)
+
+
+def export_history(
+    variables_history: Sequence[Sequence[Variable]]
+) -> dict[str, dict]:
+    """
+    Export a history of variables to a dictionary.
+    """
+    export: dict[str, dict] = {}
+    for variables in variables_history:
+        for variable in variables:
+            key = variable.designation.to_string()
+            if key not in export:
+                export[key] = {
+                    'parameters_history': [],
+                    'bounds': {
+                        'lower' : float(variable.bounds[0]),
+                        'upper': float(variable.bounds[1])
+                    },
+                    'relscale': float(variable.relscale),
+                    'sort': variable.sort,
+                }
+            export[key]['parameters_history'].append(variable.parameters)
+
+    for export_data in export.values():
+        export_data['parameters_history'] = np.array(export_data['parameters_history'])
+
+    return export
+    
+        
+
+
+
