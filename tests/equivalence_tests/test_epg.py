@@ -229,3 +229,21 @@ class Test_unit_gradient_shift_static:
         print(omega_static)
 
         print(omega_dynamic)
+
+
+
+class Test_T2preparation_operator:
+
+    def test_equivalence(self):
+        T2 = 750
+        TE = 300
+
+        torchimpl = contrib.t2prep_epg
+        jaximpl = epgjax.preparation_T2_op
+
+        jaxresult = jaximpl(T2=T2, T2_preptime=TE)
+        torchresult = torchimpl(
+            t2=torch.tensor(T2),
+            t2te=torch.tensor(TE)
+        ).detach().numpy()
+        assert np.allclose(jaxresult, torchresult, rtol=1e-5, atol=1e-5), 'jax - torch mismatch'
