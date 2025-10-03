@@ -372,9 +372,9 @@ def run_experiment(
         """
 
         gradient = (
-              0.0 * cost_grad_mapping['signal'].grad
-            + 0.0 * cost_grad_mapping['smoothness'].grad
-            + 1.0 * cost_grad_mapping['orthogonality'].grad
+              1.0 * cost_grad_mapping['signal'].grad
+            + 1.0 * cost_grad_mapping['smoothness'].grad
+            + 0.0 * cost_grad_mapping['orthogonality'].grad
         )
         
         neplogger.log_gradient(gradient, 'mean-manual', iteration)
