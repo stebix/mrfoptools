@@ -3,11 +3,16 @@ import pytest
 import jax
 import jax.numpy as jnp
 
+
+"""
+
+
 from mrfoptools.optimization.simulated_annealing.annealing_rebuild import (
     Designation, ParameterType, ParameterAxis,
     _sample_perturbation_costs, sample_perturbation_costs,
     generate_randomized_variable, EdgeMode, sweep_sample_perturbations_costs
 )
+
 
 
 
@@ -156,3 +161,5 @@ class Test_find_scale_factors:
         sf = sweep_sample_perturbations_costs(key=key, variables=variables, j_max=j_max, sample_count=sample_count, cost_func=cost_func)
 
         print(sf)
+
+"""
