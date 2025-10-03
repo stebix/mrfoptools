@@ -424,6 +424,104 @@ def compute_signal_optimized(
     return signal
 
 
+from typing import NamedTuple
+
+
+class StateSignalVector(NamedTuple):
+    """
+    Named tuple to hold the state matrix and the signal vector.
+    This is used to return both the state matrix and the signal vector
+    from the `compute_signal_and_state` function.
+    """
+    state: jax.Array
+    signal: jax.Array
+
+
+def compute_signal_and_state(
+    omega: jax.Array,
+    T1: float,
+    T2: float,
+    M0: float,
+    fa: jax.Array,
+    phases: jax.Array,
+    TR: jax.Array,
+    TE: float,
+    b_TE: float,
+    r_TE: jax.Array
+) -> StateSignalVector:
+    """
+    Compute raw signal from initial state matrix.
+
+    Note: This is currently the most optimized version of the signal computation
+          using the `lax.fori_loop` construct and a static state matrix representation.
+
+    For the most optimized version, the function should be compiled using `jax.jit`.
+    Array arguments should be passed as `jnp.array` and not `np.array`.
+
+    Parameters
+    ----------
+
+    omega : Array
+        Initial EPG state matrix (static version with maximum width)
+        Expected to be of shape (3, N)
+    
+    T1 : float
+        Longitudinal relaxation time in seconds.
+
+    T2 : float
+        Transverse relaxation time in seconds.
+
+    M0 : float
+        Equilibrium magnetization.
+
+    fa : Array
+        Flip angles in radians.
+
+    phases : Array
+        FLip pulse phase offsets in radians.
+    
+    TR : Array
+        Repetition times in seconds.
+
+    TE : float
+        Echo time in seconds.
+
+    b_TE : float
+        Longituinal relaxation term during TE.
+
+    r_TE : Array
+        EPG relaxation matrix for TE.
+    
+    Returns
+    -------
+
+    signal : Array
+        MR signal.
+    """
+    signal = jnp.zeros(len(fa), dtype=jnp.complex64)
+
+    kwargs = {
+        'fa' : fa,
+        'phases' : phases,
+        'TR' : TR,
+        'T1' : T1,
+        'T2' : T2,
+        'M0' : M0,
+        'TE' : TE,
+        'r_TE' : r_TE,
+        'b_TE' : b_TE
+    }
+
+    propagate = functools.partial(propagate_state_helper, **kwargs)
+    # propagate = jax.jit(propagate)
+    init_val = (omega, signal)
+    lower = 0
+    upper = len(fa)
+    omega, signal = jax.lax.fori_loop(lower, upper, propagate, init_val)
+
+    return StateSignalVector(state=omega, signal=signal)
+
+
 
 '''
 def compute_signal(
