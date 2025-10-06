@@ -122,6 +122,13 @@ class SequenceSegment(eqx.Module):
             The propagated state and computed signal.
         """
         raise NotImplementedError('Subclasses must implement __call__ method')
+    
+    @property
+    def duration(self) -> float:
+        """
+        Duration of the sequence segment in seconds.
+        """
+        raise NotImplementedError('Subclasses must implement duration property')
 
 
 
@@ -144,6 +151,10 @@ class ModulationSegment(SequenceSegment):
             statics=statics
         )
         return propagate(omega, parameters)
+    
+    @property
+    def duration(self) -> float:
+        return jnp.sum(self.TR)
 
 
 
@@ -179,6 +190,10 @@ class PreparationModule(SequenceSegment):
         omega = omega.at[0, :].set(0.0)  # Nuke the first row to zero
         omega = omega.at[1, :].set(0.0)  # Nuke even moar
         return StateSignal(state=omega, signal=jnp.array([], dtype=dtype))
+    
+    @property
+    def duration(self) -> float:
+        return self.delay + self.preptime
 
 
 
@@ -203,11 +218,19 @@ class InversionModule(SequenceSegment):
         )
         return StateSignal(state=omega, signal=jnp.array([], dtype=dtype))
 
+    @property
+    def duration(self) -> float:
+        return self.TI
+
 
 
 
 class PFISP(eqx.Module):
     elements: list[ModulationSegment | PreparationModule | InversionModule]
+
+    @property
+    def duration(self) -> float:
+        return sum(element.duration for element in self.elements)
     
 
 class Transients(NamedTuple):
