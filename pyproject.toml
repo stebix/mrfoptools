@@ -22,7 +22,7 @@ classifiers = [
 ]
 license = {file = "LICENSE.txt"}
 keywords = [
-    "magnetic resonance imaging", "machine learning", "automatic differentiation",
+    "magnetic resonance imaging", "automatic differentiation",
     "image processing", "machine learning", "signal processing"]
 
 dependencies = [
